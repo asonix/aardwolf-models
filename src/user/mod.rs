@@ -1,8 +1,11 @@
 use chrono::DateTime;
 use chrono::offset::Utc;
 
-use password::{CreationError, Password, VerificationError};
+pub mod local_auth;
+
 use schema::users;
+use self::local_auth::LocalAuth;
+pub use self::local_auth::VerificationError;
 use email::Email;
 
 pub trait UserLike {
@@ -11,13 +14,13 @@ pub trait UserLike {
     fn created_at(&self) -> DateTime<Utc>;
 }
 
-pub struct Authenticateduser {
+pub struct AuthenticatedUser {
     id: i32,
     primary_email: i32,
     created_at: DateTime<Utc>,
 }
 
-impl UserLike for Authenticateduser {
+impl UserLike for AuthenticatedUser {
     fn id(&self) -> i32 {
         self.id
     }
@@ -53,42 +56,34 @@ impl UserLike for QueriedUser {
 }
 
 #[derive(Queryable)]
-pub struct User {
+pub struct UnAuthenticatedUser {
     id: i32,
-    password: Password,
     primary_email: i32, // foreign key to Email
     created_at: DateTime<Utc>,
 }
 
-impl User {
-    pub fn log_in(self, password: String) -> Result<Authenticateduser, VerificationError> {
-        use password::Verify;
-
-        self.password.verify(&password).map(|_| Authenticateduser {
-            id: self.id,
-            primary_email: self.primary_email,
-            created_at: self.created_at,
-        })
+impl UnAuthenticatedUser {
+    pub fn log_in_local(
+        self,
+        local_auth: LocalAuth,
+        password: String,
+    ) -> Result<AuthenticatedUser, VerificationError> {
+        local_auth.log_in(self, password)
     }
 }
 
 #[derive(Insertable)]
 #[table_name = "users"]
 pub struct NewUser {
-    password: Password,
     primary_email: i32,
     created_at: DateTime<Utc>,
 }
 
 impl NewUser {
-    pub fn new(email: &Email, password: String) -> Result<Self, CreationError> {
-        use password::Create;
-        let password = Password::create(&password)?;
-
-        Ok(NewUser {
-            password: password,
+    pub fn new(email: &Email) -> Self {
+        NewUser {
             primary_email: email.id(),
             created_at: Utc::now(),
-        })
+        }
     }
 }

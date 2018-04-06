@@ -75,6 +75,15 @@ table! {
 }
 
 table! {
+    local_auth (id) {
+        id -> Int4,
+        password -> Varchar,
+        user_id -> Int4,
+        created_at -> Timestamptz,
+    }
+}
+
+table! {
     media_posts (id) {
         id -> Int4,
         file_id -> Int4,
@@ -113,7 +122,6 @@ table! {
 table! {
     users (id) {
         id -> Int4,
-        password -> Varchar,
         created_at -> Timestamptz,
         primary_email -> Int4,
     }
@@ -124,6 +132,7 @@ joinable!(base_posts -> base_actors (posted_by));
 joinable!(base_posts -> images (icon));
 joinable!(images -> files (file_id));
 joinable!(links -> base_posts (base_post));
+joinable!(local_auth -> users (user_id));
 joinable!(media_posts -> files (file_id));
 joinable!(media_posts -> posts (post_id));
 joinable!(personas -> base_actors (base_actor));
@@ -140,6 +149,7 @@ allow_tables_to_appear_in_same_query!(
     followers,
     images,
     links,
+    local_auth,
     media_posts,
     personas,
     posts,
