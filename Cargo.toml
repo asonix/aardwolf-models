@@ -5,6 +5,7 @@ authors = ["Riley Trautman <rileyt@spiceworks.com>"]
 
 [dependencies]
 bcrypt = "0.2"
+chrono = "0.4"
 failure = "0.1"
 log = "0.4"
 serde = "1.0"
@@ -14,4 +15,4 @@ url = "1.7"
 
 [dependencies.diesel]
 version = "1.1"
-features = ["postgres", "serde_json"]
+features = ["chrono", "postgres", "serde_json"]

@@ -114,6 +114,7 @@ table! {
     users (id) {
         id -> Int4,
         password -> Varchar,
+        created_at -> Timestamptz,
         primary_email -> Int4,
     }
 }

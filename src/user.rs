@@ -1,3 +1,6 @@
+use chrono::DateTime;
+use chrono::offset::Utc;
+
 use password::{CreationError, Password, VerificationError};
 use schema::users;
 use email::Email;
@@ -5,11 +8,13 @@ use email::Email;
 pub trait UserLike {
     fn id(&self) -> i32;
     fn primary_email(&self) -> i32;
+    fn created_at(&self) -> DateTime<Utc>;
 }
 
 pub struct Authenticateduser {
     id: i32,
     primary_email: i32,
+    created_at: DateTime<Utc>,
 }
 
 impl UserLike for Authenticateduser {
@@ -20,12 +25,17 @@ impl UserLike for Authenticateduser {
     fn primary_email(&self) -> i32 {
         self.primary_email
     }
+
+    fn created_at(&self) -> DateTime<Utc> {
+        self.created_at
+    }
 }
 
 #[derive(Queryable)]
 pub struct QueriedUser {
     id: i32,
     primary_email: i32,
+    created_at: DateTime<Utc>,
 }
 
 impl UserLike for QueriedUser {
@@ -36,6 +46,10 @@ impl UserLike for QueriedUser {
     fn primary_email(&self) -> i32 {
         self.primary_email
     }
+
+    fn created_at(&self) -> DateTime<Utc> {
+        self.created_at
+    }
 }
 
 #[derive(Queryable)]
@@ -43,6 +57,7 @@ pub struct User {
     id: i32,
     password: Password,
     primary_email: i32, // foreign key to Email
+    created_at: DateTime<Utc>,
 }
 
 impl User {
@@ -52,6 +67,7 @@ impl User {
         self.password.verify(&password).map(|_| Authenticateduser {
             id: self.id,
             primary_email: self.primary_email,
+            created_at: self.created_at,
         })
     }
 }
@@ -61,6 +77,7 @@ impl User {
 pub struct NewUser {
     password: Password,
     primary_email: i32,
+    created_at: DateTime<Utc>,
 }
 
 impl NewUser {
@@ -71,6 +88,7 @@ impl NewUser {
         Ok(NewUser {
             password: password,
             primary_email: email.id(),
+            created_at: Utc::now(),
         })
     }
 }
