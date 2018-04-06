@@ -17,7 +17,7 @@ pub mod follower;
 pub mod image;
 pub mod link;
 pub mod media_post;
-pub mod password;
+mod password;
 pub mod persona;
 pub mod post;
 pub mod reaction;
