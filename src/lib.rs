@@ -1,5 +1,10 @@
+extern crate bcrypt;
 #[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate failure;
+#[macro_use]
+extern crate log;
 extern crate serde_json;
 extern crate url;
 
@@ -9,6 +14,9 @@ use serde_json::Value;
 use url::Url;
 
 mod schema;
+mod password;
+
+use password::Password;
 
 #[derive(Queryable)]
 struct File {
@@ -27,6 +35,8 @@ struct Image {
 #[derive(Queryable)]
 struct User {
     id: i32,
+    password: Password,
+    primary_email: i32, // foreign key to Email
 }
 
 #[derive(Queryable)]
@@ -123,4 +133,11 @@ struct Reaction {
     id: i32,
     reaction_type: ReactionType,
     comment: i32, // foreign key to Comment
+}
+
+#[derive(Queryable)]
+struct Email {
+    id: i32,
+    email: String,
+    user_id: i32, // foreign key to User
 }

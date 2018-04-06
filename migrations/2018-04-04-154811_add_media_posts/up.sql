@@ -1,6 +1,6 @@
 -- Your SQL goes here
 CREATE TABLE media_posts (
   id SERIAL PRIMARY KEY,
-  file_id INTEGER REFERENCES files(id) NOT NULL,
-  post_id INTEGER REFERENCES posts(id) NOT NULL
+  file_id INTEGER REFERENCES files(id) ON DELETE CASCADE NOT NULL,
+  post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE NOT NULL
 );

@@ -31,6 +31,14 @@ table! {
 }
 
 table! {
+    emails (id) {
+        id -> Int4,
+        email -> Nullable<Varchar>,
+        user_id -> Int4,
+    }
+}
+
+table! {
     files (id) {
         id -> Int4,
         file_path -> Varchar,
@@ -97,7 +105,7 @@ table! {
 table! {
     reactions (id) {
         id -> Int4,
-        reaction_type -> Nullable<Varchar>,
+        reaction_type -> Varchar,
         comment_id -> Int4,
     }
 }
@@ -105,6 +113,8 @@ table! {
 table! {
     users (id) {
         id -> Int4,
+        password -> Nullable<Varchar>,
+        primary_email -> Int4,
     }
 }
 
@@ -124,6 +134,7 @@ allow_tables_to_appear_in_same_query!(
     base_actors,
     base_posts,
     comments,
+    emails,
     files,
     followers,
     images,
