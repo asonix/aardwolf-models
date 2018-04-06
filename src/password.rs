@@ -1,6 +1,12 @@
 use std::fmt;
+use std::io::Write;
 
 use bcrypt::{hash, verify, DEFAULT_COST};
+use diesel::backend::Backend;
+use diesel::Expression;
+use diesel::serialize;
+use diesel::deserialize;
+use diesel::sql_types::Text;
 
 pub trait Verify {
     fn verify(&self, &str) -> Result<(), VerificationError>;
@@ -10,7 +16,7 @@ pub trait Create: Sized {
     fn create(&str) -> Result<Self, CreationError>;
 }
 
-#[derive(Debug, Clone, Copy, Eq, Fail, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
 pub enum VerificationError {
     #[fail(display = "Error validating password")]
     Process,
@@ -18,11 +24,34 @@ pub enum VerificationError {
     Password,
 }
 
-#[derive(Debug, Clone, Copy, Eq, Fail, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
 #[fail(display = "Error creating password")]
 pub struct CreationError;
 
+#[derive(AsExpression)]
 pub struct Password(String);
+
+impl Expression for Password {
+    type SqlType = Text;
+}
+
+impl<DB> serialize::ToSql<Text, DB> for Password
+where
+    DB: Backend,
+{
+    fn to_sql<W: Write>(&self, out: &mut serialize::Output<W, DB>) -> serialize::Result {
+        serialize::ToSql::<Text, DB>::to_sql(&self.0, out)
+    }
+}
+
+impl<DB> deserialize::FromSql<Text, DB> for Password
+where
+    DB: Backend<RawValue = [u8]>,
+{
+    fn from_sql(bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
+        deserialize::FromSql::<Text, DB>::from_sql(bytes).map(Password)
+    }
+}
 
 impl fmt::Debug for Password {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

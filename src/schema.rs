@@ -113,7 +113,7 @@ table! {
 table! {
     users (id) {
         id -> Int4,
-        password -> Nullable<Varchar>,
+        password -> Varchar,
         primary_email -> Int4,
     }
 }

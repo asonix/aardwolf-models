@@ -1,0 +1,46 @@
+use base_post::BasePost;
+use schema::posts;
+
+#[derive(Queryable)]
+pub struct Post {
+    id: i32,
+    content: String,
+    source: Option<String>,
+    base_post: i32, // foreign key to BasePost
+}
+
+impl Post {
+    pub fn id(&self) -> i32 {
+        self.id
+    }
+
+    pub fn content(&self) -> &str {
+        &self.content
+    }
+
+    pub fn source(&self) -> Option<&str> {
+        self.source.as_ref().map(|s| s.as_ref())
+    }
+
+    pub fn base_post(&self) -> i32 {
+        self.base_post
+    }
+}
+
+#[derive(Insertable)]
+#[table_name = "posts"]
+pub struct NewPost {
+    content: String,
+    source: Option<String>,
+    base_post: i32,
+}
+
+impl NewPost {
+    pub fn new(content: String, source: Option<String>, base_post: &BasePost) -> Self {
+        NewPost {
+            content,
+            source,
+            base_post: base_post.id(),
+        }
+    }
+}

@@ -1,5 +1,5 @@
 -- Your SQL goes here
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
-  password VARCHAR(256)
+  password VARCHAR(256) NOT NULL
 );
