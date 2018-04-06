@@ -8,11 +8,11 @@ use diesel::serialize;
 use diesel::deserialize;
 use diesel::sql_types::Text;
 
-pub trait Verify {
+pub(crate) trait Verify {
     fn verify(&self, &str) -> Result<(), VerificationError>;
 }
 
-pub trait Create: Sized {
+pub(crate) trait Create: Sized {
     fn create(&str) -> Result<Self, CreationError>;
 }
 
