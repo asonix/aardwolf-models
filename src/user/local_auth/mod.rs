@@ -4,7 +4,7 @@ use chrono::offset::Utc;
 mod password;
 
 use self::password::{CreationError, Password};
-pub use self::password::VerificationError;
+pub use self::password::{PlaintextPassword, VerificationError};
 use schema::local_auth;
 use user::{AuthenticatedUser, UnAuthenticatedUser};
 
@@ -32,7 +32,7 @@ impl LocalAuth {
     pub(crate) fn log_in(
         self,
         user: UnAuthenticatedUser,
-        password: String,
+        password: PlaintextPassword,
     ) -> Result<AuthenticatedUser, VerificationError> {
         use self::password::Verify;
 
@@ -40,7 +40,7 @@ impl LocalAuth {
             return Err(VerificationError::Process);
         }
 
-        self.password.verify(&password).map(|_| AuthenticatedUser {
+        self.password.verify(password).map(|_| AuthenticatedUser {
             id: user.id,
             primary_email: user.primary_email,
             created_at: user.created_at,
@@ -57,9 +57,12 @@ pub struct NewLocalAuth {
 }
 
 impl NewLocalAuth {
-    pub fn new(user: &UnAuthenticatedUser, password: String) -> Result<Self, CreationError> {
+    pub fn new(
+        user: &UnAuthenticatedUser,
+        password: PlaintextPassword,
+    ) -> Result<Self, CreationError> {
         use self::password::Create;
-        let password = Password::create(&password)?;
+        let password = Password::create(password)?;
 
         Ok(NewLocalAuth {
             password: password,

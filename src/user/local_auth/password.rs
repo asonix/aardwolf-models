@@ -9,11 +9,11 @@ use diesel::deserialize;
 use diesel::sql_types::Text;
 
 pub(crate) trait Verify {
-    fn verify(&self, &str) -> Result<(), VerificationError>;
+    fn verify(&self, PlaintextPassword) -> Result<(), VerificationError>;
 }
 
 pub(crate) trait Create: Sized {
-    fn create(&str) -> Result<Self, CreationError>;
+    fn create(PlaintextPassword) -> Result<Self, CreationError>;
 }
 
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
@@ -27,6 +27,21 @@ pub enum VerificationError {
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
 #[fail(display = "Error creating password")]
 pub struct CreationError;
+
+#[derive(Deserialize)]
+pub struct PlaintextPassword(String);
+
+impl fmt::Debug for PlaintextPassword {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "********")
+    }
+}
+
+impl fmt::Display for PlaintextPassword {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "********")
+    }
+}
 
 #[derive(AsExpression)]
 pub struct Password(String);
@@ -66,8 +81,8 @@ impl fmt::Display for Password {
 }
 
 impl Verify for Password {
-    fn verify(&self, given_password: &str) -> Result<(), VerificationError> {
-        verify(&self.0, given_password)
+    fn verify(&self, given_password: PlaintextPassword) -> Result<(), VerificationError> {
+        verify(&self.0, &given_password.0)
             .map_err(|e| {
                 error!("Error verifying password: {}", e);
 
@@ -84,8 +99,8 @@ impl Verify for Password {
 }
 
 impl Create for Password {
-    fn create(password: &str) -> Result<Password, CreationError> {
-        hash(password, DEFAULT_COST)
+    fn create(password: PlaintextPassword) -> Result<Password, CreationError> {
+        hash(&password.0, DEFAULT_COST)
             .map_err(|e| {
                 error!("Error creating password: {}", e);
 

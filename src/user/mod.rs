@@ -5,7 +5,7 @@ pub mod local_auth;
 
 use schema::users;
 use self::local_auth::LocalAuth;
-pub use self::local_auth::VerificationError;
+pub use self::local_auth::{PlaintextPassword, VerificationError};
 use email::Email;
 
 pub trait UserLike {
@@ -66,7 +66,7 @@ impl UnAuthenticatedUser {
     pub fn log_in_local(
         self,
         local_auth: LocalAuth,
-        password: String,
+        password: PlaintextPassword,
     ) -> Result<AuthenticatedUser, VerificationError> {
         local_auth.log_in(self, password)
     }
