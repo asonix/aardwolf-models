@@ -35,6 +35,7 @@ table! {
         id -> Int4,
         email -> Varchar,
         user_id -> Int4,
+        verified -> Bool,
     }
 }
 
@@ -112,6 +113,14 @@ table! {
 }
 
 table! {
+    permissions (id) {
+        id -> Int4,
+        name -> Varchar,
+        created_at -> Timestamptz,
+    }
+}
+
+table! {
     personas (id) {
         id -> Int4,
         default_visibility -> Varchar,
@@ -140,6 +149,23 @@ table! {
 }
 
 table! {
+    role_permissions (id) {
+        id -> Int4,
+        role_id -> Int4,
+        permission_id -> Int4,
+        created_at -> Timestamptz,
+    }
+}
+
+table! {
+    roles (id) {
+        id -> Int4,
+        name -> Varchar,
+        created_at -> Timestamptz,
+    }
+}
+
+table! {
     timers (id) {
         id -> Int4,
         fire_time -> Timestamptz,
@@ -147,17 +173,25 @@ table! {
 }
 
 table! {
+    user_roles (id) {
+        id -> Int4,
+        user_id -> Int4,
+        role_id -> Int4,
+        created_at -> Timestamptz,
+    }
+}
+
+table! {
     users (id) {
         id -> Int4,
         created_at -> Timestamptz,
-        primary_email -> Varchar,
+        primary_email -> Nullable<Int4>,
     }
 }
 
 joinable!(base_actors -> users (local_user));
 joinable!(base_posts -> base_actors (posted_by));
 joinable!(base_posts -> images (icon));
-joinable!(emails -> users (user_id));
 joinable!(event_notifications -> events (event_id));
 joinable!(event_notifications -> timers (timer_id));
 joinable!(events -> personas (owner));
@@ -170,6 +204,10 @@ joinable!(personas -> base_actors (base_actor));
 joinable!(personas -> images (avatar));
 joinable!(posts -> base_posts (base_post));
 joinable!(reactions -> comments (comment_id));
+joinable!(role_permissions -> permissions (permission_id));
+joinable!(role_permissions -> roles (role_id));
+joinable!(user_roles -> roles (role_id));
+joinable!(user_roles -> users (user_id));
 
 allow_tables_to_appear_in_same_query!(
     base_actors,
@@ -184,9 +222,13 @@ allow_tables_to_appear_in_same_query!(
     links,
     local_auth,
     media_posts,
+    permissions,
     personas,
     posts,
     reactions,
+    role_permissions,
+    roles,
     timers,
+    user_roles,
     users,
 );

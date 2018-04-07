@@ -6,7 +6,7 @@ mod password;
 use self::password::{CreationError, Password};
 pub use self::password::{PlaintextPassword, ValidationError, VerificationError};
 use schema::local_auth;
-use user::{AuthenticatedUser, UnAuthenticatedUser};
+use user::{AuthenticatedUser, UnauthenticatedUser, UnverifiedUser};
 
 /// `LocalAuth` can be queried from the database, but is only really usable as a tool to "log in" a
 /// user.
@@ -32,15 +32,15 @@ impl LocalAuth {
         self.user_id
     }
 
-    /// Log In a user, given an `UnAuthenticatedUser` and a `PlaintextPassword`.
+    /// Log In a user, given an `UnauthenticatedUser` and a `PlaintextPassword`.
     ///
-    /// This method ensures first that the `UnAuthenticatedUser` is the same user that this
+    /// This method ensures first that the `UnauthenticatedUser` is the same user that this
     /// `LocalAuth` is associated with, and then continues to verify the `PlaintextPassword`
     /// against this type's `Password`. Upon succesful password verification, an
     /// `AuthenticatedUser` is created.
     pub(crate) fn log_in(
         self,
-        user: UnAuthenticatedUser,
+        user: UnauthenticatedUser,
         password: PlaintextPassword,
     ) -> Result<AuthenticatedUser, VerificationError> {
         use self::password::Verify;
@@ -68,10 +68,7 @@ pub struct NewLocalAuth {
 
 impl NewLocalAuth {
     /// Create a `NewLocalAuth`
-    pub fn new(
-        user: &UnAuthenticatedUser,
-        password: PlaintextPassword,
-    ) -> Result<Self, CreationError> {
+    pub fn new(user: &UnverifiedUser, password: PlaintextPassword) -> Result<Self, CreationError> {
         use self::password::Validate;
 
         let password = password.validate()?;
@@ -81,7 +78,7 @@ impl NewLocalAuth {
 
     /// Create a `NewLocalAuth` with a redundant password to check for consistency.
     pub fn new_from_two(
-        user: &UnAuthenticatedUser,
+        user: &UnverifiedUser,
         password: PlaintextPassword,
         password2: PlaintextPassword,
     ) -> Result<Self, CreationError> {
@@ -94,10 +91,7 @@ impl NewLocalAuth {
         NewLocalAuth::create(user, password)
     }
 
-    fn create(
-        user: &UnAuthenticatedUser,
-        password: PlaintextPassword,
-    ) -> Result<Self, CreationError> {
+    fn create(user: &UnverifiedUser, password: PlaintextPassword) -> Result<Self, CreationError> {
         use self::password::Create;
         let password = Password::create(password)?;
 

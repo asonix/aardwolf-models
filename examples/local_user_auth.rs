@@ -11,7 +11,7 @@ extern crate serde_json;
 use std::env;
 
 use aardwolf_models::user::email::{Email, NewEmail};
-use aardwolf_models::user::{NewUser, UnAuthenticatedUser};
+use aardwolf_models::user::{NewUser, UnauthenticatedUser, UnverifiedUser};
 use aardwolf_models::user::local_auth::{LocalAuth, NewLocalAuth};
 use aardwolf_models::user::local_auth::PlaintextPassword;
 use diesel::prelude::*;
@@ -38,11 +38,12 @@ fn establish_connection() -> PgConnection {
     PgConnection::establish(&database_url).unwrap()
 }
 
-fn insert_user(new_user: NewUser, connection: &PgConnection) -> UnAuthenticatedUser {
+fn insert_user(new_user: NewUser, connection: &PgConnection) -> UnverifiedUser {
     use aardwolf_models::schema::users;
 
     diesel::insert_into(users::table)
         .values(&new_user)
+        .returning((users::dsl::id, users::dsl::created_at))
         .get_result(connection)
         .unwrap()
 }
@@ -68,11 +69,11 @@ fn insert_email(new_email: NewEmail, connection: &PgConnection) -> Email {
 fn lookup_user_by_email(
     email: String,
     connection: &PgConnection,
-) -> (UnAuthenticatedUser, Email, LocalAuth) {
+) -> (UnauthenticatedUser, Email, LocalAuth) {
     use aardwolf_models::schema::{emails, local_auth, users};
 
     users::dsl::users
-        .inner_join(emails::dsl::emails)
+        .inner_join(emails::dsl::emails.on(emails::dsl::user_id.eq(users::dsl::id)))
         .inner_join(local_auth::dsl::local_auth)
         .filter(emails::dsl::email.eq(email))
         .first(connection)
@@ -95,7 +96,7 @@ fn main() {
 
             let payload: Payload = serde_json::from_value(json).unwrap();
 
-            let user = insert_user(NewUser::new(payload.email.clone()), &connection);
+            let user = insert_user(NewUser::new(), &connection);
 
             insert_auth(
                 NewLocalAuth::new_from_two(&user, payload.password, payload.confirm_password)

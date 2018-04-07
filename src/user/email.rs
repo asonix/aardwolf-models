@@ -7,6 +7,7 @@ pub struct Email {
     id: i32,
     email: String,
     user_id: i32, // foreign key to User
+    verified: bool,
 }
 
 impl Email {
@@ -28,6 +29,7 @@ impl Email {
 pub struct NewEmail {
     email: String,
     user_id: i32,
+    verified: bool,
 }
 
 impl NewEmail {
@@ -35,6 +37,7 @@ impl NewEmail {
         NewEmail {
             email,
             user_id: user.id(),
+            verified: false,
         }
     }
 }

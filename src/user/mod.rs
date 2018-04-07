@@ -3,6 +3,7 @@ use chrono::offset::Utc;
 
 pub mod email;
 pub mod local_auth;
+pub mod role;
 
 use schema::users;
 use self::local_auth::LocalAuth;
@@ -10,13 +11,13 @@ pub use self::local_auth::{PlaintextPassword, VerificationError};
 
 pub trait UserLike {
     fn id(&self) -> i32;
-    fn primary_email(&self) -> &str;
+    fn primary_email(&self) -> Option<i32>;
     fn created_at(&self) -> DateTime<Utc>;
 }
 
 pub struct AuthenticatedUser {
     id: i32,
-    primary_email: String,
+    primary_email: Option<i32>,
     created_at: DateTime<Utc>,
 }
 
@@ -25,8 +26,29 @@ impl UserLike for AuthenticatedUser {
         self.id
     }
 
-    fn primary_email(&self) -> &str {
-        &self.primary_email
+    fn primary_email(&self) -> Option<i32> {
+        self.primary_email
+    }
+
+    fn created_at(&self) -> DateTime<Utc> {
+        self.created_at
+    }
+}
+
+#[derive(Debug, Identifiable, Queryable)]
+#[table_name = "users"]
+pub struct UnverifiedUser {
+    id: i32,
+    created_at: DateTime<Utc>,
+}
+
+impl UserLike for UnverifiedUser {
+    fn id(&self) -> i32 {
+        self.id
+    }
+
+    fn primary_email(&self) -> Option<i32> {
+        None
     }
 
     fn created_at(&self) -> DateTime<Utc> {
@@ -39,7 +61,7 @@ impl UserLike for AuthenticatedUser {
 pub struct QueriedUser {
     id: i32,
     created_at: DateTime<Utc>,
-    primary_email: String,
+    primary_email: Option<i32>,
 }
 
 impl UserLike for QueriedUser {
@@ -47,8 +69,8 @@ impl UserLike for QueriedUser {
         self.id
     }
 
-    fn primary_email(&self) -> &str {
-        &self.primary_email
+    fn primary_email(&self) -> Option<i32> {
+        self.primary_email
     }
 
     fn created_at(&self) -> DateTime<Utc> {
@@ -58,13 +80,13 @@ impl UserLike for QueriedUser {
 
 #[derive(Debug, Identifiable, Queryable)]
 #[table_name = "users"]
-pub struct UnAuthenticatedUser {
+pub struct UnauthenticatedUser {
     id: i32,
     created_at: DateTime<Utc>,
-    primary_email: String,
+    primary_email: Option<i32>,
 }
 
-impl UnAuthenticatedUser {
+impl UnauthenticatedUser {
     pub fn log_in_local(
         self,
         local_auth: LocalAuth,
@@ -74,13 +96,13 @@ impl UnAuthenticatedUser {
     }
 }
 
-impl UserLike for UnAuthenticatedUser {
+impl UserLike for UnauthenticatedUser {
     fn id(&self) -> i32 {
         self.id
     }
 
-    fn primary_email(&self) -> &str {
-        &self.primary_email
+    fn primary_email(&self) -> Option<i32> {
+        self.primary_email
     }
 
     fn created_at(&self) -> DateTime<Utc> {
@@ -91,15 +113,15 @@ impl UserLike for UnAuthenticatedUser {
 #[derive(Insertable)]
 #[table_name = "users"]
 pub struct NewUser {
-    primary_email: String,
     created_at: DateTime<Utc>,
+    primary_email: Option<i32>,
 }
 
 impl NewUser {
-    pub fn new(email: String) -> Self {
+    pub fn new() -> Self {
         NewUser {
-            primary_email: email,
             created_at: Utc::now(),
+            primary_email: None,
         }
     }
 }
