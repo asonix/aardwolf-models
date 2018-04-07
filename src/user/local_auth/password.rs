@@ -244,3 +244,111 @@ impl Create for Password {
             .map(Password)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{Create, Password, PlaintextPassword, Validate, Verify};
+    use serde_json;
+
+    #[derive(Deserialize)]
+    struct Payload {
+        password: PlaintextPassword,
+    }
+
+    #[test]
+    fn create_and_verify_password() {
+        let json = r#"{"password":"testpass"}"#;
+
+        let Payload { password } = serde_json::from_str(json).unwrap();
+
+        let hashed_password = Password::create(password);
+        assert!(
+            hashed_password.is_ok(),
+            "Failed to create password from PlaintextPassword"
+        );
+        let hashed_password = hashed_password.unwrap();
+
+        let Payload { password } = serde_json::from_str(json).unwrap();
+
+        assert!(
+            hashed_password.verify(password).is_ok(),
+            "Failed to verify password"
+        );
+    }
+
+    #[test]
+    fn dont_verify_bad_password() {
+        let json = r#"{"password":"testpass"}"#;
+
+        let Payload { password } = serde_json::from_str(json).unwrap();
+
+        let hashed_password = Password::create(password);
+        assert!(
+            hashed_password.is_ok(),
+            "Failed to create password from PlaintextPassword"
+        );
+        let hashed_password = hashed_password.unwrap();
+
+        let json2 = r#"{"password":"anotherthing"}"#;
+
+        let Payload { password } = serde_json::from_str(json2).unwrap();
+
+        assert!(
+            hashed_password.verify(password).is_err(),
+            "Should not have verified invalid password"
+        );
+    }
+
+    #[test]
+    fn validate_long_password() {
+        let json = r#"{"password":"testpass"}"#;
+
+        let Payload { password } = serde_json::from_str(json).unwrap();
+
+        assert!(
+            password.validate().is_ok(),
+            "Password should have passed validation"
+        );
+    }
+
+    #[test]
+    fn dont_validate_short_password() {
+        let json = r#"{"password":"testpas"}"#;
+
+        let Payload { password } = serde_json::from_str(json).unwrap();
+
+        assert!(
+            password.validate().is_err(),
+            "Password should have passed validation"
+        );
+    }
+
+    #[test]
+    fn validate_same_password() {
+        let json = r#"{"password":"testpass"}"#;
+
+        let Payload { password } = serde_json::from_str(json).unwrap();
+        let pass1 = password;
+        let Payload { password } = serde_json::from_str(json).unwrap();
+
+        assert!(
+            password.compare(pass1).is_ok(),
+            "Identical passwords should pass validation"
+        );
+    }
+
+    #[test]
+    fn dont_validate_different_password() {
+        let json = r#"{"password":"testpass"}"#;
+
+        let Payload { password } = serde_json::from_str(json).unwrap();
+        let pass1 = password;
+        let json2 = r#"{"password":"anotherthing"}"#;
+        let Payload { password } = serde_json::from_str(json2).unwrap();
+
+        assert!(
+            password.compare(pass1).is_err(),
+            "Different passwords should not pass validation"
+        );
+    }
+}
