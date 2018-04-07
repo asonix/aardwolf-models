@@ -1,6 +1,9 @@
 use base_post::BasePost;
 use schema::posts;
 
+pub mod comment;
+pub mod media_post;
+
 #[derive(Debug, Identifiable, Queryable)]
 #[table_name = "posts"]
 pub struct Post {

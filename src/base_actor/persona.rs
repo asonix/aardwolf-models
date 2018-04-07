@@ -9,7 +9,7 @@ use diesel::serialize;
 use diesel::sql_types::Text;
 
 use base_actor::BaseActor;
-use image::Image;
+use file::image::Image;
 use schema::personas;
 
 #[derive(AsExpression, Clone, Copy, Debug, Eq, FromSqlRow, Hash, PartialEq)]

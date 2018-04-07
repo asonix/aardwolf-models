@@ -1,4 +1,4 @@
-use post::Post;
+use super::Post;
 use schema::comments;
 
 #[derive(Debug, Identifiable, Queryable)]

@@ -1,6 +1,7 @@
 use chrono::DateTime;
 use chrono::offset::Utc;
 
+pub mod email;
 pub mod local_auth;
 
 use schema::users;

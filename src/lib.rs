@@ -15,18 +15,8 @@ extern crate url;
 
 pub mod base_actor;
 pub mod base_post;
-pub mod comment;
-pub mod email;
-pub mod event;
-pub mod event_notification;
 pub mod file;
-pub mod follower;
-pub mod image;
 pub mod link;
-pub mod media_post;
-pub mod persona;
-pub mod post;
-pub mod reaction;
 pub mod schema;
 pub mod timer;
 pub mod user;

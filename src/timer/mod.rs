@@ -1,6 +1,9 @@
 use chrono::DateTime;
 use chrono::offset::Utc;
 
+pub mod event;
+pub mod event_notification;
+
 use schema::timers;
 
 #[derive(Debug, Identifiable, Queryable)]

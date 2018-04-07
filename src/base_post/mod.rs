@@ -1,7 +1,10 @@
 use serde_json::Value;
 
+pub mod post;
+pub mod reaction;
+
 use base_actor::BaseActor;
-use image::Image;
+use file::image::Image;
 use schema::base_posts;
 
 #[derive(Debug, Identifiable, Queryable)]

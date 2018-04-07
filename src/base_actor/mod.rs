@@ -1,6 +1,9 @@
 use serde_json::Value;
 use url::Url;
 
+pub mod follower;
+pub mod persona;
+
 use schema::base_actors;
 use user::UserLike;
 

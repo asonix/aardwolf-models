@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+pub mod image;
+
 use schema::files;
 
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]

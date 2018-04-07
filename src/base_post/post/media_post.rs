@@ -1,5 +1,5 @@
 use file::File;
-use post::Post;
+use super::Post;
 use schema::media_posts;
 
 #[derive(Debug, Identifiable, Queryable)]

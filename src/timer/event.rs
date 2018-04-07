@@ -1,6 +1,6 @@
 use chrono_tz::Tz;
 
-use persona::Persona;
+use base_actor::persona::Persona;
 use schema::events;
 use timer::Timer;
 

@@ -9,7 +9,7 @@ use diesel::Expression;
 use diesel::serialize;
 use diesel::sql_types::Text;
 
-use comment::Comment;
+use base_post::post::comment::Comment;
 use schema::reactions;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

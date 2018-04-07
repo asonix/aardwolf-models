@@ -1,4 +1,4 @@
-use event::Event;
+use timer::event::Event;
 use schema::event_notifications;
 use timer::Timer;
 
