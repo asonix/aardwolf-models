@@ -6,6 +6,7 @@ authors = ["Riley Trautman <rileyt@spiceworks.com>"]
 [dependencies]
 bcrypt = "0.2"
 chrono = "0.4"
+chrono-tz = "0.4"
 failure = "0.1"
 log = "0.4"
 serde = "1.0"

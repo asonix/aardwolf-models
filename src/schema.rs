@@ -39,6 +39,26 @@ table! {
 }
 
 table! {
+    event_notifications (id) {
+        id -> Int4,
+        event_id -> Int4,
+        timer_id -> Int4,
+    }
+}
+
+table! {
+    events (id) {
+        id -> Int4,
+        owner -> Int4,
+        start_date -> Int4,
+        end_date -> Int4,
+        timezone -> Varchar,
+        title -> Text,
+        description -> Text,
+    }
+}
+
+table! {
     files (id) {
         id -> Int4,
         file_path -> Varchar,
@@ -120,6 +140,13 @@ table! {
 }
 
 table! {
+    timers (id) {
+        id -> Int4,
+        fire_time -> Timestamptz,
+    }
+}
+
+table! {
     users (id) {
         id -> Int4,
         created_at -> Timestamptz,
@@ -130,6 +157,9 @@ table! {
 joinable!(base_actors -> users (local_user));
 joinable!(base_posts -> base_actors (posted_by));
 joinable!(base_posts -> images (icon));
+joinable!(event_notifications -> events (event_id));
+joinable!(event_notifications -> timers (timer_id));
+joinable!(events -> personas (owner));
 joinable!(images -> files (file_id));
 joinable!(links -> base_posts (base_post));
 joinable!(local_auth -> users (user_id));
@@ -145,6 +175,8 @@ allow_tables_to_appear_in_same_query!(
     base_posts,
     comments,
     emails,
+    event_notifications,
+    events,
     files,
     followers,
     images,
@@ -154,5 +186,6 @@ allow_tables_to_appear_in_same_query!(
     personas,
     posts,
     reactions,
+    timers,
     users,
 );
