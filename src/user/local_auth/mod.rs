@@ -4,10 +4,12 @@ use chrono::offset::Utc;
 mod password;
 
 use self::password::{CreationError, Password};
-pub use self::password::{PlaintextPassword, VerificationError};
+pub use self::password::{PlaintextPassword, ValidationError, VerificationError};
 use schema::local_auth;
 use user::{AuthenticatedUser, UnAuthenticatedUser};
 
+/// `LocalAuth` can be queried from the database, but is only really usable as a tool to "log in" a
+/// user.
 #[derive(Queryable)]
 pub struct LocalAuth {
     id: i32,
@@ -29,6 +31,12 @@ impl LocalAuth {
         self.user_id
     }
 
+    /// Log In a user, given an `UnAuthenticatedUser` and a `PlaintextPassword`.
+    ///
+    /// This method ensures first that the `UnAuthenticatedUser` is the same user that this
+    /// `LocalAuth` is associated with, and then continues to verify the `PlaintextPassword`
+    /// against this type's `Password`. Upon succesful password verification, an
+    /// `AuthenticatedUser` is created.
     pub(crate) fn log_in(
         self,
         user: UnAuthenticatedUser,
@@ -48,6 +56,7 @@ impl LocalAuth {
     }
 }
 
+/// This type exists to create new `LocalAuth` record in the database.
 #[derive(Insertable)]
 #[table_name = "local_auth"]
 pub struct NewLocalAuth {
@@ -57,7 +66,34 @@ pub struct NewLocalAuth {
 }
 
 impl NewLocalAuth {
+    /// Create a `NewLocalAuth`
     pub fn new(
+        user: &UnAuthenticatedUser,
+        password: PlaintextPassword,
+    ) -> Result<Self, CreationError> {
+        use self::password::Validate;
+
+        let password = password.validate()?;
+
+        NewLocalAuth::create(user, password)
+    }
+
+    /// Create a `NewLocalAuth` with a redundant password to check for consistency.
+    pub fn new_from_two(
+        user: &UnAuthenticatedUser,
+        password: PlaintextPassword,
+        password2: PlaintextPassword,
+    ) -> Result<Self, CreationError> {
+        use self::password::Validate;
+
+        let password = password
+            .validate()
+            .and_then(|password| password.compare(password2))?;
+
+        NewLocalAuth::create(user, password)
+    }
+
+    fn create(
         user: &UnAuthenticatedUser,
         password: PlaintextPassword,
     ) -> Result<Self, CreationError> {
