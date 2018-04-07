@@ -4,7 +4,8 @@ use url::Url;
 use schema::base_actors;
 use user::UserLike;
 
-#[derive(Queryable)]
+#[derive(Debug, Identifiable, Queryable)]
+#[table_name = "base_actors"]
 pub struct BaseActor {
     id: i32,
     display_name: String,    // max_length: 80

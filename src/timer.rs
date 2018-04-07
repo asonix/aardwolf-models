@@ -3,7 +3,8 @@ use chrono::offset::Utc;
 
 use schema::timers;
 
-#[derive(Queryable)]
+#[derive(Debug, Identifiable, Queryable)]
+#[table_name = "timers"]
 pub struct Timer {
     id: i32,
     fire_time: DateTime<Utc>,

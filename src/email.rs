@@ -1,7 +1,8 @@
 use schema::emails;
 use user::UserLike;
 
-#[derive(Queryable)]
+#[derive(Debug, Identifiable, Queryable)]
+#[table_name = "emails"]
 pub struct Email {
     id: i32,
     email: String,

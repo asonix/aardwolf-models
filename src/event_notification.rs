@@ -2,7 +2,8 @@ use event::Event;
 use schema::event_notifications;
 use timer::Timer;
 
-#[derive(Queryable)]
+#[derive(Debug, Identifiable, Queryable)]
+#[table_name = "event_notifications"]
 pub struct EventNotification {
     id: i32,
     event_id: i32, // foreign key to Event

@@ -1,7 +1,8 @@
 use base_post::BasePost;
 use schema::posts;
 
-#[derive(Queryable)]
+#[derive(Debug, Identifiable, Queryable)]
+#[table_name = "posts"]
 pub struct Post {
     id: i32,
     content: String,

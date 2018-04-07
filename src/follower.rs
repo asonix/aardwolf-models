@@ -1,7 +1,8 @@
 use base_actor::BaseActor;
 use schema::followers;
 
-#[derive(Queryable)]
+#[derive(Debug, Identifiable, Queryable)]
+#[table_name = "followers"]
 pub struct Follower {
     id: i32,
     follower: i32, // foreign key to BaseActor

@@ -10,12 +10,13 @@ use user::{AuthenticatedUser, UnAuthenticatedUser};
 
 /// `LocalAuth` can be queried from the database, but is only really usable as a tool to "log in" a
 /// user.
-#[derive(Queryable)]
+#[derive(Debug, Identifiable, Queryable)]
+#[table_name = "local_auth"]
 pub struct LocalAuth {
     id: i32,
     password: Password,
-    created_at: DateTime<Utc>,
     user_id: i32, // foreign key to User
+    created_at: DateTime<Utc>,
 }
 
 impl LocalAuth {

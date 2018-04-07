@@ -4,7 +4,8 @@ use base_actor::BaseActor;
 use image::Image;
 use schema::base_posts;
 
-#[derive(Queryable)]
+#[derive(Debug, Identifiable, Queryable)]
+#[table_name = "base_posts"]
 pub struct BasePost {
     id: i32,
     name: Option<String>,       // max_length: 140

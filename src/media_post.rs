@@ -2,7 +2,8 @@ use file::File;
 use post::Post;
 use schema::media_posts;
 
-#[derive(Queryable)]
+#[derive(Debug, Identifiable, Queryable)]
+#[table_name = "media_posts"]
 pub struct MediaPost {
     id: i32,
     file_id: i32, // foreign key to File

@@ -4,7 +4,8 @@ use persona::Persona;
 use schema::events;
 use timer::Timer;
 
-#[derive(Queryable)]
+#[derive(Debug, Identifiable, Queryable)]
+#[table_name = "events"]
 pub struct Event {
     id: i32,
     owner: i32,      // foreign key to Persona

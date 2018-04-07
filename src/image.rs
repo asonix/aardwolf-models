@@ -1,7 +1,8 @@
 use schema::images;
 use file::File;
 
-#[derive(Queryable)]
+#[derive(Debug, Identifiable, Queryable)]
+#[table_name = "images"]
 pub struct Image {
     id: i32,
     width: u32,

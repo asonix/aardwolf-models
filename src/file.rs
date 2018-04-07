@@ -10,7 +10,8 @@ pub enum FileCreationError {
     Utf8,
 }
 
-#[derive(Queryable)]
+#[derive(Debug, Identifiable, Queryable)]
+#[table_name = "files"]
 pub struct File {
     id: i32,
     file_path: PathBuf,

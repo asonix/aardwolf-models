@@ -5,7 +5,6 @@ use std::str::FromStr;
 
 use diesel::backend::Backend;
 use diesel::deserialize;
-use diesel::Expression;
 use diesel::serialize;
 use diesel::sql_types::Text;
 
@@ -13,7 +12,8 @@ use base_actor::BaseActor;
 use image::Image;
 use schema::personas;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(AsExpression, Clone, Copy, Debug, Eq, FromSqlRow, Hash, PartialEq)]
+#[sql_type = "Text"]
 pub enum Visibility {
     Public,
     FollowersOnly,
@@ -44,10 +44,6 @@ impl FromStr for Visibility {
             _ => Err(VisibilityParseError),
         }
     }
-}
-
-impl Expression for Visibility {
-    type SqlType = Text;
 }
 
 impl<DB> serialize::ToSql<Text, DB> for Visibility
@@ -91,7 +87,8 @@ impl StdError for VisibilityParseError {
     }
 }
 
-#[derive(Queryable)]
+#[derive(Debug, Identifiable, Queryable)]
+#[table_name = "personas"]
 pub struct Persona {
     id: i32,
     default_visibility: Visibility,

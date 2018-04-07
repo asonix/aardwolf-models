@@ -1,7 +1,8 @@
 use post::Post;
 use schema::comments;
 
-#[derive(Queryable)]
+#[derive(Debug, Identifiable, Queryable)]
+#[table_name = "comments"]
 pub struct Comment {
     id: i32,
     conversation: i32, // foreign key to topic Post

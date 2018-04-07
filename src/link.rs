@@ -4,7 +4,6 @@ use std::str::FromStr;
 use std::error::Error as StdError;
 
 use diesel::backend::Backend;
-use diesel::Expression;
 use diesel::serialize;
 use diesel::deserialize;
 use diesel::sql_types::Text;
@@ -13,7 +12,8 @@ use url::Url;
 use base_post::BasePost;
 use schema::links;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(AsExpression, Clone, Copy, Debug, Eq, FromSqlRow, Hash, PartialEq)]
+#[sql_type = "Text"]
 pub enum Lang {
     EnUs,
     EnUk,
@@ -41,10 +41,6 @@ impl FromStr for Lang {
             _ => Err(LangParseError),
         }
     }
-}
-
-impl Expression for Lang {
-    type SqlType = Text;
 }
 
 impl<DB> serialize::ToSql<Text, DB> for Lang
@@ -88,7 +84,8 @@ impl StdError for LangParseError {
     }
 }
 
-#[derive(Queryable)]
+#[derive(Debug, Identifiable, Queryable)]
+#[table_name = "links"]
 pub struct Link {
     id: i32,
     href: Url, // max_length: 2048

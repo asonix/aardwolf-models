@@ -33,7 +33,7 @@ table! {
 table! {
     emails (id) {
         id -> Int4,
-        email -> Nullable<Varchar>,
+        email -> Varchar,
         user_id -> Int4,
     }
 }
@@ -150,13 +150,14 @@ table! {
     users (id) {
         id -> Int4,
         created_at -> Timestamptz,
-        primary_email -> Int4,
+        primary_email -> Varchar,
     }
 }
 
 joinable!(base_actors -> users (local_user));
 joinable!(base_posts -> base_actors (posted_by));
 joinable!(base_posts -> images (icon));
+joinable!(emails -> users (user_id));
 joinable!(event_notifications -> events (event_id));
 joinable!(event_notifications -> timers (timer_id));
 joinable!(events -> personas (owner));

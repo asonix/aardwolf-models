@@ -3,9 +3,8 @@ use std::io::Write;
 
 use bcrypt::{hash, verify, DEFAULT_COST};
 use diesel::backend::Backend;
-use diesel::Expression;
-use diesel::serialize;
 use diesel::deserialize;
+use diesel::serialize;
 use diesel::sql_types::Text;
 
 /// Create a trait used to verify passwords.
@@ -182,12 +181,9 @@ impl Validate for PlaintextPassword {
 /// "verified", a user can be considered "logged in".
 ///
 /// Debug and Display are both implemented for Password, but they simply print eight asterisks.
-#[derive(AsExpression)]
+#[derive(AsExpression, FromSqlRow)]
+#[sql_type = "Text"]
 pub struct Password(String);
-
-impl Expression for Password {
-    type SqlType = Text;
-}
 
 impl<DB> serialize::ToSql<Text, DB> for Password
 where
@@ -221,7 +217,7 @@ impl fmt::Display for Password {
 
 impl Verify for Password {
     fn verify(&self, given_password: PlaintextPassword) -> Result<(), VerificationError> {
-        verify(&self.0, &given_password.0)
+        verify(&given_password.0, &self.0)
             .map_err(|e| {
                 error!("Error verifying password: {}", e);
 

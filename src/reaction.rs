@@ -87,7 +87,8 @@ impl StdError for ReactionTypeParseError {
     }
 }
 
-#[derive(Queryable)]
+#[derive(Debug, Identifiable, Queryable)]
+#[table_name = "reactions"]
 pub struct Reaction {
     id: i32,
     reaction_type: ReactionType,
