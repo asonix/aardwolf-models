@@ -26,6 +26,18 @@ pub trait UserLike {
         self.has_permission("follow-user", conn)
     }
 
+    fn can_configure_instance(&self, conn: &PgConnection) -> Result<bool, diesel::result::Error> {
+        self.has_permission("configure-instance", conn)
+    }
+
+    fn can_ban_user(&self, conn: &PgConnection) -> Result<bool, diesel::result::Error> {
+        self.has_permission("ban-user", conn)
+    }
+
+    fn can_block_instance(&self, conn: &PgConnection) -> Result<bool, diesel::result::Error> {
+        self.has_permission("block-instance", conn)
+    }
+
     fn is_verified(&self, conn: &PgConnection) -> Result<bool, diesel::result::Error> {
         self.has_role("verified", conn)
     }
