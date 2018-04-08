@@ -143,6 +143,32 @@ fn grant_role<U: UserLike>(
         })
 }
 
+fn revoke_role<U: UserLike>(
+    user: &U,
+    role: &str,
+    conn: &PgConnection,
+) -> Result<(), diesel::result::Error> {
+    use schema::{roles, user_roles};
+    use diesel::prelude::*;
+
+    if !user.has_role(role, conn)? {
+        return Ok(());
+    }
+
+    roles::table
+        .filter(roles::dsl::name.eq(role))
+        .select(roles::dsl::id)
+        .get_result(conn)
+        .and_then(|role_id: i32| {
+            let user_role = user_roles::table
+                .filter(user_roles::dsl::user_id.eq(user.id()))
+                .filter(user_roles::dsl::role_id.eq(role_id));
+
+            diesel::delete(user_role).execute(conn)
+        })
+        .map(|_| ())
+}
+
 pub struct AdminUser {
     id: i32,
     primary_email: Option<i32>,
@@ -157,6 +183,15 @@ impl AdminUser {
         conn: &PgConnection,
     ) -> Result<(), diesel::result::Error> {
         grant_role(user, role, conn)
+    }
+
+    pub fn revoke_role<U: UserLike>(
+        &self,
+        user: &U,
+        role: &str,
+        conn: &PgConnection,
+    ) -> Result<(), diesel::result::Error> {
+        revoke_role(user, role, conn)
     }
 }
 
