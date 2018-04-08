@@ -170,15 +170,10 @@ fn main() {
                 Err(unverified_email) => unverified_email,
             };
 
-            let (mut authenticated_user, verify_email) = unverified_email
-                .verify(unverified_user, payload.token)
-                .unwrap();
-            let verified_email = verify_email.store_verify(&connection).unwrap();
-            authenticated_user
-                .verify(&verified_email, &connection)
-                .unwrap();
-            authenticated_user
-                .set_default_email(&verified_email, &connection)
+            let (_authenticated_user, _verified_email) = unverified_user
+                .verify(unverified_email, payload.token)
+                .unwrap()
+                .store_verify(&connection)
                 .unwrap();
 
             println!("Verified user!");

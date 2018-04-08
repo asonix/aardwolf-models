@@ -4,8 +4,8 @@ use diesel;
 use diesel::pg::PgConnection;
 
 use schema::emails;
-use self::token::{create_token, CreationError, HashedEmailToken, VerificationError};
-pub use self::token::{EmailToken, EmailVerificationToken};
+use self::token::{create_token, CreationError, HashedEmailToken};
+pub use self::token::{EmailToken, EmailVerificationToken, VerificationError};
 use user::{AuthenticatedUser, UnverifiedUser, UserLike};
 
 pub struct VerifiedEmail {
@@ -68,7 +68,10 @@ pub struct VerifyEmail {
 }
 
 impl VerifyEmail {
-    pub fn store_verify(self, conn: &PgConnection) -> Result<VerifiedEmail, diesel::result::Error> {
+    pub(crate) fn store_verify(
+        self,
+        conn: &PgConnection,
+    ) -> Result<VerifiedEmail, diesel::result::Error> {
         use schema::emails;
         use diesel::prelude::*;
 
@@ -93,28 +96,32 @@ pub struct UnverifiedEmail {
 }
 
 impl UnverifiedEmail {
-    pub fn verify(
+    pub(crate) fn verify_and_log_in(
         self,
         user: UnverifiedUser,
         token: EmailVerificationToken,
     ) -> Result<(AuthenticatedUser, VerifyEmail), VerificationError> {
+        self.verify(token).map(|verify_email| {
+            (
+                AuthenticatedUser {
+                    id: user.id,
+                    primary_email: None,
+                    created_at: user.created_at,
+                },
+                verify_email,
+            )
+        })
+    }
+
+    pub fn verify(self, token: EmailVerificationToken) -> Result<VerifyEmail, VerificationError> {
         if self.verification_token.is_some() && !self.verified {
             token::VerifyEmail::verify_email(self.verification_token.as_ref().unwrap(), token).map(
-                |_| {
-                    (
-                        AuthenticatedUser {
-                            id: user.id,
-                            primary_email: None,
-                            created_at: user.created_at,
-                        },
-                        VerifyEmail {
-                            id: self.id,
-                            email: self.email,
-                            user_id: self.user_id,
-                            verified: true,
-                            verification_token: None,
-                        },
-                    )
+                |_| VerifyEmail {
+                    id: self.id,
+                    email: self.email,
+                    user_id: self.user_id,
+                    verified: true,
+                    verification_token: None,
                 },
             )
         } else if !self.verified {

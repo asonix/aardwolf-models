@@ -1,4 +1,5 @@
 use diesel;
+use diesel::connection::Connection;
 use diesel::pg::PgConnection;
 use chrono::DateTime;
 use chrono::offset::Utc;
@@ -8,7 +9,7 @@ pub mod local_auth;
 pub mod role;
 
 use schema::users;
-use self::email::VerifiedEmail;
+use self::email::{EmailVerificationToken, UnverifiedEmail, VerifiedEmail, VerifyEmail};
 use self::local_auth::LocalAuth;
 pub use self::local_auth::{PlaintextPassword, VerificationError};
 
@@ -79,30 +80,6 @@ impl AuthenticatedUser {
             })
     }
 
-    pub fn verify(
-        &self,
-        email: &VerifiedEmail,
-        conn: &PgConnection,
-    ) -> Result<(), diesel::result::Error> {
-        use schema::{roles, user_roles};
-        use diesel::prelude::*;
-
-        roles::table
-            .filter(roles::dsl::name.eq("verified"))
-            .select(roles::dsl::id)
-            .get_result(conn)
-            .and_then(|role_id: i32| {
-                diesel::insert_into(user_roles::table)
-                    .values((
-                        user_roles::dsl::user_id.eq(email.user_id()),
-                        user_roles::dsl::role_id.eq(role_id),
-                        user_roles::dsl::created_at.eq(Utc::now()),
-                    ))
-                    .execute(conn)
-                    .map(|_| ())
-            })
-    }
-
     pub fn is_admin(
         self,
         conn: &PgConnection,
@@ -143,6 +120,53 @@ impl AuthenticatedUser {
             .get_result(conn)
             .map(|num_verified: i64| num_verified > 0)
     }
+
+    fn verify(
+        &self,
+        email: &VerifiedEmail,
+        conn: &PgConnection,
+    ) -> Result<(), diesel::result::Error> {
+        use schema::{roles, user_roles};
+        use diesel::prelude::*;
+
+        roles::table
+            .filter(roles::dsl::name.eq("verified"))
+            .select(roles::dsl::id)
+            .get_result(conn)
+            .and_then(|role_id: i32| {
+                diesel::insert_into(user_roles::table)
+                    .values((
+                        user_roles::dsl::user_id.eq(email.user_id()),
+                        user_roles::dsl::role_id.eq(role_id),
+                        user_roles::dsl::created_at.eq(Utc::now()),
+                    ))
+                    .execute(conn)
+                    .map(|_| ())
+            })
+    }
+}
+
+pub struct MemVerified {
+    email: VerifyEmail,
+    user: AuthenticatedUser,
+}
+
+impl MemVerified {
+    pub fn store_verify(
+        self,
+        conn: &PgConnection,
+    ) -> Result<(AuthenticatedUser, VerifiedEmail), diesel::result::Error> {
+        conn.transaction(|| {
+            let MemVerified { email, mut user } = self;
+
+            email.store_verify(conn).and_then(|verified_email| {
+                user.verify(&verified_email, conn).and_then(|_| {
+                    user.set_default_email(&verified_email, conn)
+                        .map(|_| (user, verified_email))
+                })
+            })
+        })
+    }
 }
 
 pub struct UnverifiedUser {
@@ -161,6 +185,18 @@ impl UserLike for UnverifiedUser {
 
     fn created_at(&self) -> DateTime<Utc> {
         self.created_at
+    }
+}
+
+impl UnverifiedUser {
+    pub fn verify(
+        self,
+        email: UnverifiedEmail,
+        token: EmailVerificationToken,
+    ) -> Result<MemVerified, email::VerificationError> {
+        email
+            .verify_and_log_in(self, token)
+            .map(|(user, email)| MemVerified { email, user })
     }
 }
 
