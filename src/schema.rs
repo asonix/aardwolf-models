@@ -17,6 +17,7 @@ table! {
         media_type -> Nullable<Varchar>,
         posted_by -> Nullable<Int4>,
         icon -> Nullable<Int4>,
+        visibility -> Varchar,
         original_json -> Jsonb,
     }
 }

@@ -6,6 +6,7 @@ pub mod reaction;
 use base_actor::BaseActor;
 use file::image::Image;
 use schema::base_posts;
+use sql_types::PostVisibility;
 
 #[derive(Debug, Identifiable, Queryable)]
 #[table_name = "base_posts"]
@@ -15,7 +16,8 @@ pub struct BasePost {
     media_type: Option<String>, // max_length: 80
     posted_by: Option<i32>,     // foreign key to BaseActor
     icon: Option<i32>,          // foreign key to Image
-    original_json: Value,       // original json
+    visibility: PostVisibility,
+    original_json: Value, // original json
 }
 
 impl BasePost {
@@ -51,6 +53,7 @@ pub struct NewBasePost {
     media_type: Option<String>,
     posted_by: Option<i32>,
     icon: Option<i32>,
+    visibility: PostVisibility,
     original_json: Value,
 }
 
@@ -60,6 +63,7 @@ impl NewBasePost {
         media_type: Option<String>,
         posted_by: Option<&BaseActor>,
         icon: Option<&Image>,
+        visibility: PostVisibility,
         original_json: Value,
     ) -> Self {
         NewBasePost {
@@ -67,6 +71,7 @@ impl NewBasePost {
             media_type,
             posted_by: posted_by.map(|pb| pb.id()),
             icon: icon.map(|i| i.id()),
+            visibility,
             original_json,
         }
     }

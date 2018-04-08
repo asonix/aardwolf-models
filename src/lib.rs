@@ -19,5 +19,6 @@ pub mod base_post;
 pub mod file;
 pub mod link;
 pub mod schema;
+pub mod sql_types;
 pub mod timer;
 pub mod user;
