@@ -7,6 +7,7 @@ use file::File;
 use file::image::Image;
 use base_actor::BaseActor;
 use base_actor::follow_request::{FollowRequest, NewFollowRequest};
+use base_actor::follower::{Follower, NewFollower};
 use base_post::{BasePost, NewBasePost};
 use base_post::post::{NewPost, Post};
 use base_post::post::media_post::{MediaPost, NewMediaPost};
@@ -220,7 +221,7 @@ impl<'a> CommentMaker<'a> {
 pub struct ActorFollower<'a>(&'a BaseActor);
 
 impl<'a> ActorFollower<'a> {
-    pub(crate) fn new(base_actor: &'a BaseActor) -> ActorFollower {
+    pub(crate) fn new(base_actor: &BaseActor) -> ActorFollower {
         ActorFollower(base_actor)
     }
 
@@ -255,5 +256,68 @@ pub enum FollowError {
 impl From<diesel::result::Error> for FollowError {
     fn from(e: diesel::result::Error) -> Self {
         FollowError::Diesel(e)
+    }
+}
+
+pub struct FollowRequestManager<'a>(&'a BaseActor);
+
+impl<'a> FollowRequestManager<'a> {
+    pub(crate) fn new(base_actor: &BaseActor) -> FollowRequestManager {
+        FollowRequestManager(base_actor)
+    }
+
+    pub fn accept_follow_request(
+        &self,
+        follow_request: FollowRequest,
+        conn: &PgConnection,
+    ) -> Result<Follower, FollowRequestManagerError> {
+        use schema::followers;
+        use diesel::prelude::*;
+
+        if follow_request.requested_follow() != self.0.id() {
+            return Err(FollowRequestManagerError::IdMismatch);
+        }
+
+        conn.transaction(|| {
+            diesel::delete(&follow_request)
+                .execute(conn)
+                .and_then(|_| {
+                    diesel::insert_into(followers::table)
+                        .values(&NewFollower::from(follow_request))
+                        .get_result(conn)
+                })
+                .map_err(From::from)
+        })
+    }
+
+    pub fn reject_follow_request(
+        &self,
+        follow_request: FollowRequest,
+        conn: &PgConnection,
+    ) -> Result<(), FollowRequestManagerError> {
+        use diesel::prelude::*;
+
+        if follow_request.requested_follow() != self.0.id() {
+            return Err(FollowRequestManagerError::IdMismatch);
+        }
+
+        diesel::delete(&follow_request)
+            .execute(conn)
+            .map(|_| ())
+            .map_err(From::from)
+    }
+}
+
+#[derive(Debug, Fail)]
+pub enum FollowRequestManagerError {
+    #[fail(display = "Error managing follow request")]
+    Diesel(#[cause] diesel::result::Error),
+    #[fail(display = "Cannot manage other actor's follow requests")]
+    IdMismatch,
+}
+
+impl From<diesel::result::Error> for FollowRequestManagerError {
+    fn from(e: diesel::result::Error) -> Self {
+        FollowRequestManagerError::Diesel(e)
     }
 }

@@ -15,3 +15,4 @@ INSERT INTO permissions (name, created_at) VALUES ('block-instance', 'now');
 INSERT INTO permissions (name, created_at) VALUES ('grant-role', 'now');
 INSERT INTO permissions (name, created_at) VALUES ('revoke-role', 'now');
 INSERT INTO permissions (name, created_at) VALUES ('make-persona', 'now');
+INSERT INTO permissions (name, created_at) VALUES ('manage-follow-requests', 'now');

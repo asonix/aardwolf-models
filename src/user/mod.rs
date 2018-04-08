@@ -132,6 +132,19 @@ pub trait AuthenticatedUserLike: UserLike {
         self.has_permission("make-persona", conn)
     }
 
+    fn can_manage_follow_requests<'a>(
+        &self,
+        base_actor: &'a BaseActor,
+        conn: &PgConnection,
+    ) -> PermissionResult<permissions::FollowRequestManager<'a>> {
+        if self.is_actor(base_actor) {
+            self.has_permission("manage-follow-requests", conn)
+                .map(|_| permissions::FollowRequestManager::new(base_actor))
+        } else {
+            Err(PermissionError::Permission)
+        }
+    }
+
     fn can_configure_instance(&self, conn: &PgConnection) -> PermissionResult<()> {
         self.has_permission("configure-instance", conn)
     }

@@ -1,4 +1,5 @@
 use base_actor::BaseActor;
+use base_actor::follow_request::FollowRequest;
 use schema::followers;
 
 #[derive(Debug, Identifiable, Queryable)]
@@ -35,6 +36,15 @@ impl NewFollower {
         NewFollower {
             follower: follower.id(),
             follows: follows.id(),
+        }
+    }
+}
+
+impl From<FollowRequest> for NewFollower {
+    fn from(follow_request: FollowRequest) -> Self {
+        NewFollower {
+            follower: follow_request.follower(),
+            follows: follow_request.requested_follow(),
         }
     }
 }
