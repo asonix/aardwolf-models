@@ -17,6 +17,11 @@ INSERT INTO role_permissions (role_id, permission_id, created_at) VALUES (
     'now'
 );
 INSERT INTO role_permissions (role_id, permission_id, created_at) VALUES (
+    (SELECT id FROM roles WHERE name = 'verified'),
+    (SELECT id FROM permissions WHERE name = 'make-persona'),
+    'now'
+);
+INSERT INTO role_permissions (role_id, permission_id, created_at) VALUES (
     (SELECT id FROM roles WHERE name = 'admin'),
     (SELECT id FROM permissions WHERE name = 'configure-instance'),
     'now'

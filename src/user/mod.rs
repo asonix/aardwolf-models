@@ -113,6 +113,10 @@ pub trait AuthenticatedUserLike: UserLike {
         self.has_permission("follow-user", conn)
     }
 
+    fn can_make_persona(&self, conn: &PgConnection) -> PermissionResult<()> {
+        self.has_permission("make-persona", conn)
+    }
+
     fn can_configure_instance(&self, conn: &PgConnection) -> PermissionResult<()> {
         self.has_permission("configure-instance", conn)
     }

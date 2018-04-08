@@ -12,3 +12,4 @@ INSERT INTO permissions (name, created_at) VALUES ('ban-user', 'now');
 INSERT INTO permissions (name, created_at) VALUES ('block-instance', 'now');
 INSERT INTO permissions (name, created_at) VALUES ('grant-role', 'now');
 INSERT INTO permissions (name, created_at) VALUES ('revoke-role', 'now');
+INSERT INTO permissions (name, created_at) VALUES ('make-persona', 'now');
