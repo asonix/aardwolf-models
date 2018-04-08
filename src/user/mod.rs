@@ -229,6 +229,29 @@ impl From<diesel::result::Error> for UserVerifyError {
     }
 }
 
+impl From<UpdateFieldError> for UserVerifyError {
+    fn from(e: UpdateFieldError) -> Self {
+        match e {
+            UpdateFieldError::Diesel(d) => UserVerifyError::Diesel(d),
+            UpdateFieldError::Relation => UserVerifyError::IdMismatch,
+        }
+    }
+}
+
+#[derive(Debug, Fail)]
+pub enum UpdateFieldError {
+    #[fail(display = "Error updating record: {}", _0)]
+    Diesel(#[cause] diesel::result::Error),
+    #[fail(display = "Provided records are not related")]
+    Relation,
+}
+
+impl From<diesel::result::Error> for UpdateFieldError {
+    fn from(e: diesel::result::Error) -> Self {
+        UpdateFieldError::Diesel(e)
+    }
+}
+
 #[derive(Identifiable)]
 #[table_name = "users"]
 pub struct AuthenticatedUser {
@@ -242,12 +265,17 @@ impl AuthenticatedUser {
         &mut self,
         email: &VerifiedEmail,
         conn: &PgConnection,
-    ) -> Result<(), diesel::result::Error> {
+    ) -> Result<(), UpdateFieldError> {
+        if email.user_id() != self.id {
+            return Err(UpdateFieldError::Relation);
+        }
+
         use diesel::prelude::*;
 
         diesel::update(&*self)
             .set(users::primary_email.eq(Some(email.id())))
             .execute(conn)
+            .map_err(From::from)
             .map(|_| {
                 self.primary_email = Some(email.id());
                 ()
