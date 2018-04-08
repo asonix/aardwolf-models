@@ -70,7 +70,7 @@ pub type PermissionResult<T> = Result<T, PermissionError>;
 ///
 /// This way, permission checking would be enforced by the compiler, since "making a post" or
 /// "configuring the instance" would not be possible without calling these methods.
-pub trait AuthenticatedUserLike: UserLike {
+pub trait PermissionedUser: UserLike {
     fn can_post<'a>(
         &self,
         base_actor: &'a BaseActor,
@@ -292,7 +292,7 @@ impl UserLike for AuthenticatedUser {
     }
 }
 
-impl AuthenticatedUserLike for AuthenticatedUser {}
+impl PermissionedUser for AuthenticatedUser {}
 
 pub struct MemVerified {
     email: VerifyEmail,
