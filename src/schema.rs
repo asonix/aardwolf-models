@@ -36,6 +36,7 @@ table! {
         email -> Varchar,
         user_id -> Int4,
         verified -> Bool,
+        verification_token -> Nullable<Varchar>,
     }
 }
 

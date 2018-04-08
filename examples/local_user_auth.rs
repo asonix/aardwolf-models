@@ -10,8 +10,8 @@ extern crate serde_json;
 
 use std::env;
 
-use aardwolf_models::user::email::{Email, NewEmail};
-use aardwolf_models::user::{NewUser, UnauthenticatedUser, UnverifiedUser};
+use aardwolf_models::user::email::{Email, EmailVerificationToken, NewEmail, UnverifiedEmail};
+use aardwolf_models::user::{NewUser, UnauthenticatedUser};
 use aardwolf_models::user::local_auth::{LocalAuth, NewLocalAuth};
 use aardwolf_models::user::local_auth::PlaintextPassword;
 use diesel::prelude::*;
@@ -31,6 +31,12 @@ struct AuthPayload {
     password: PlaintextPassword,
 }
 
+#[derive(Deserialize)]
+struct VerificationPayload {
+    email: String,
+    token: EmailVerificationToken,
+}
+
 fn establish_connection() -> PgConnection {
     dotenv().ok();
     let database_url = env::var("TEST_DATABASE_URL").unwrap();
@@ -38,12 +44,11 @@ fn establish_connection() -> PgConnection {
     PgConnection::establish(&database_url).unwrap()
 }
 
-fn insert_user(new_user: NewUser, connection: &PgConnection) -> UnverifiedUser {
+fn insert_user(new_user: NewUser, connection: &PgConnection) -> UnauthenticatedUser {
     use aardwolf_models::schema::users;
 
     diesel::insert_into(users::table)
         .values(&new_user)
-        .returning((users::dsl::id, users::dsl::created_at))
         .get_result(connection)
         .unwrap()
 }
@@ -57,7 +62,7 @@ fn insert_auth(new_local_auth: NewLocalAuth, connection: &PgConnection) -> Local
         .unwrap()
 }
 
-fn insert_email(new_email: NewEmail, connection: &PgConnection) -> Email {
+fn insert_email(new_email: NewEmail, connection: &PgConnection) -> UnverifiedEmail {
     use aardwolf_models::schema::emails;
 
     diesel::insert_into(emails::table)
@@ -87,7 +92,8 @@ fn main() {
     let connection = establish_connection();
 
     connection.test_transaction::<(), diesel::result::Error, _>(|| {
-        {
+        // Create a user. Users are initially unverified
+        let token = {
             let json = json!({
                 "email": "test@example.com",
                 "password": "testpass",
@@ -96,7 +102,13 @@ fn main() {
 
             let payload: Payload = serde_json::from_value(json).unwrap();
 
-            let user = insert_user(NewUser::new(), &connection);
+            let user = match insert_user(NewUser::new(), &connection)
+                .to_verified(&connection)
+                .unwrap()
+            {
+                Ok(_) => panic!("Unexpected verified user"),
+                Err(user) => user,
+            };
 
             insert_auth(
                 NewLocalAuth::new_from_two(&user, payload.password, payload.confirm_password)
@@ -104,11 +116,15 @@ fn main() {
                 &connection,
             );
 
-            insert_email(NewEmail::new(payload.email, &user), &connection);
+            let (new_email, token) = NewEmail::new(payload.email, &user).unwrap();
+
+            insert_email(new_email, &connection);
 
             println!("Created user, local_auth, and email!");
-        }
+            token
+        };
 
+        // Log in the unverified user
         {
             let json = json!({
                 "email": "test@example.com",
@@ -120,11 +136,76 @@ fn main() {
             let (unauthenticated_user, _email, local_auth) =
                 lookup_user_by_email(payload.email, &connection);
 
-            unauthenticated_user
+            let user = unauthenticated_user
                 .log_in_local(local_auth, payload.password)
                 .unwrap();
 
-            println!("Logged in User!!!");
+            assert!(
+                !user.is_verified(&connection).unwrap(),
+                "User shouldn't be verified at this point"
+            );
+
+            println!("Logged in unverified User!!!");
+        }
+
+        // Verify the user
+        {
+            let json = json!({
+                "email":"test@example.com",
+                "token":format!("{}", token)
+            });
+
+            let payload: VerificationPayload = serde_json::from_value(json).unwrap();
+
+            let (unauthenticated_user, email, _local_auth) =
+                lookup_user_by_email(payload.email, &connection);
+
+            let unverified_user = unauthenticated_user
+                .to_verified(&connection)
+                .unwrap()
+                .unwrap_err();
+
+            let unverified_email = match email.to_verified() {
+                Ok(_) => panic!("Unexpected verified email"),
+                Err(unverified_email) => unverified_email,
+            };
+
+            let (mut authenticated_user, verify_email) = unverified_email
+                .verify(unverified_user, payload.token)
+                .unwrap();
+            let verified_email = verify_email.store_verify(&connection).unwrap();
+            authenticated_user
+                .verify(&verified_email, &connection)
+                .unwrap();
+            authenticated_user
+                .set_default_email(&verified_email, &connection)
+                .unwrap();
+
+            println!("Verified user!");
+        }
+
+        // log in the verified user
+        {
+            let json = json!({
+                "email": "test@example.com",
+                "password": "testpass",
+            });
+
+            let payload: AuthPayload = serde_json::from_value(json).unwrap();
+
+            let (unauthenticated_user, _email, local_auth) =
+                lookup_user_by_email(payload.email, &connection);
+
+            let user = unauthenticated_user
+                .log_in_local(local_auth, payload.password)
+                .unwrap();
+
+            assert!(
+                user.is_verified(&connection).unwrap(),
+                "User should be verified at this point"
+            );
+
+            println!("Logged in verified User!!!");
         }
 
         Ok(())
