@@ -311,7 +311,7 @@ impl UnauthenticatedUser {
         self,
         conn: &PgConnection,
     ) -> Result<Result<UnauthenticatedUser, UnverifiedUser>, diesel::result::Error> {
-        self.has_role("verified", conn).map(|has_role| {
+        self.is_verified(conn).map(|has_role| {
             if has_role {
                 Ok(self)
             } else {
