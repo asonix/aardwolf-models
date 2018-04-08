@@ -1,10 +1,12 @@
 mod lang;
+mod follow_policy;
 mod mime;
 mod post_visibility;
 mod reaction_type;
 mod url;
 
 pub use self::lang::Lang;
+pub use self::follow_policy::FollowPolicy;
 pub use self::mime::Mime;
 pub use self::post_visibility::PostVisibility;
 pub use self::reaction_type::ReactionType;

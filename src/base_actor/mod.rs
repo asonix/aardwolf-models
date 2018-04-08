@@ -2,7 +2,7 @@ use diesel;
 use diesel::pg::PgConnection;
 use serde_json::Value;
 
-use sql_types::Url;
+use sql_types::{FollowPolicy, Url};
 
 pub mod follow_request;
 pub mod follower;
@@ -19,6 +19,7 @@ pub struct ModifiedBaseActor {
     profile_url: Url,
     inbox_url: Url,
     outbox_url: Url,
+    follow_policy: FollowPolicy,
     original_json: Value,
 }
 
@@ -39,6 +40,10 @@ impl ModifiedBaseActor {
         self.outbox_url = outbox_url.into();
     }
 
+    pub fn set_follow_policy(&mut self, follow_policy: FollowPolicy) {
+        self.follow_policy = follow_policy;
+    }
+
     pub fn save_changes(self, conn: &PgConnection) -> Result<BaseActor, diesel::result::Error> {
         use diesel::prelude::*;
 
@@ -51,12 +56,13 @@ impl ModifiedBaseActor {
 #[derive(Debug, Queryable)]
 pub struct BaseActor {
     id: i32,
-    display_name: String,    // max_length: 80
-    profile_url: Url,        // max_length: 2048
-    inbox_url: Url,          // max_length: 2048
-    outbox_url: Url,         // max_length: 2048
-    local_user: Option<i32>, // foreign key to User
-    original_json: Value,    // original json
+    display_name: String,        // max_length: 80
+    profile_url: Url,            // max_length: 2048
+    inbox_url: Url,              // max_length: 2048
+    outbox_url: Url,             // max_length: 2048
+    local_user: Option<i32>,     // foreign key to User
+    follow_policy: FollowPolicy, // max_length: 8
+    original_json: Value,        // original json
 }
 
 impl BaseActor {
@@ -71,6 +77,7 @@ impl BaseActor {
             profile_url: self.profile_url,
             inbox_url: self.inbox_url,
             outbox_url: self.outbox_url,
+            follow_policy: self.follow_policy,
             original_json: self.original_json,
         }
     }
@@ -95,6 +102,10 @@ impl BaseActor {
         self.local_user
     }
 
+    pub fn follow_policy(&self) -> FollowPolicy {
+        self.follow_policy
+    }
+
     pub fn original_json(&self) -> &Value {
         &self.original_json
     }
@@ -107,6 +118,7 @@ pub struct NewBaseActor {
     profile_url: Url,
     inbox_url: Url,
     local_user: Option<i32>,
+    follow_policy: FollowPolicy,
     original_json: Value,
 }
 
@@ -116,6 +128,7 @@ impl NewBaseActor {
         profile_url: Url,
         inbox_url: Url,
         local_user: Option<&U>,
+        follow_policy: FollowPolicy,
         original_json: Value,
     ) -> Self {
         NewBaseActor {
@@ -123,6 +136,7 @@ impl NewBaseActor {
             profile_url,
             inbox_url,
             local_user: local_user.map(|lu| lu.id()),
+            follow_policy,
             original_json,
         }
     }

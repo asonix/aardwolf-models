@@ -6,6 +6,7 @@ table! {
         inbox_url -> Varchar,
         outbox_url -> Varchar,
         local_user -> Nullable<Int4>,
+        follow_policy -> Varchar,
         original_json -> Jsonb,
     }
 }

@@ -6,5 +6,6 @@ CREATE TABLE base_actors (
   inbox_url VARCHAR(2048) NOT NULL,
   outbox_url VARCHAR(2048) NOT NULL,
   local_user INTEGER REFERENCES users(id),
+  follow_policy VARCHAR(8) NOT NULL,
   original_json JSONB NOT NULL
 );

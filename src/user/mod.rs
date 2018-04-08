@@ -115,14 +115,14 @@ pub trait AuthenticatedUserLike: UserLike {
         }
     }
 
-    /// TODO: Create an `ActorFollower` type that can be used to create Follow Requests for a
-    /// specified actor.
-    ///
-    /// TODO: Maybe do more verification here. Is the actor allowed to follow the other actor? does
-    /// the target actor accept follow requests? Maybe leave that logic for the `ActorFollower`
-    fn can_follow(&self, base_actor: &BaseActor, conn: &PgConnection) -> PermissionResult<()> {
+    fn can_follow<'a>(
+        &self,
+        base_actor: &'a BaseActor,
+        conn: &PgConnection,
+    ) -> PermissionResult<permissions::ActorFollower<'a>> {
         if self.is_actor(base_actor) {
             self.has_permission("follow-user", conn)
+                .map(|_| permissions::ActorFollower::new(base_actor))
         } else {
             Err(PermissionError::Permission)
         }
