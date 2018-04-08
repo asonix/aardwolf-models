@@ -60,6 +60,42 @@ impl From<diesel::result::Error> for PermissionError {
 
 pub type PermissionResult<T> = Result<T, PermissionError>;
 
+mod permissions {
+    pub struct RoleGranter(());
+
+    impl RoleGranter {
+        pub(crate) fn new() -> RoleGranter {
+            RoleGranter(())
+        }
+
+        pub fn grant_role<U: super::UserLike>(
+            &self,
+            user: &U,
+            role: &str,
+            conn: &super::PgConnection,
+        ) -> Result<(), super::diesel::result::Error> {
+            super::grant_role(user, role, conn)
+        }
+    }
+
+    pub struct RoleRevoker(());
+
+    impl RoleRevoker {
+        pub(crate) fn new() -> RoleRevoker {
+            RoleRevoker(())
+        }
+
+        pub fn revoke_role<U: super::UserLike>(
+            &self,
+            user: &U,
+            role: &str,
+            conn: &super::PgConnection,
+        ) -> Result<(), super::diesel::result::Error> {
+            super::revoke_role(user, role, conn)
+        }
+    }
+}
+
 /// Define things a logged-in user is allowed to do.
 ///
 /// The end-goal for this trait is to produce types like `PostCreator`, `UserFollower`, and
@@ -87,6 +123,16 @@ pub trait AuthenticatedUserLike: UserLike {
 
     fn can_block_instance(&self, conn: &PgConnection) -> PermissionResult<()> {
         self.has_permission("block-instance", conn)
+    }
+
+    fn can_grant_role(&self, conn: &PgConnection) -> PermissionResult<permissions::RoleGranter> {
+        self.has_permission("grant-role", conn)
+            .map(|_| permissions::RoleGranter::new())
+    }
+
+    fn can_revoke_role(&self, conn: &PgConnection) -> PermissionResult<permissions::RoleRevoker> {
+        self.has_permission("revoke-role", conn)
+            .map(|_| permissions::RoleRevoker::new())
     }
 
     fn has_permission(&self, name: &str, conn: &PgConnection) -> PermissionResult<()> {
@@ -169,48 +215,6 @@ fn revoke_role<U: UserLike>(
         .map(|_| ())
 }
 
-pub struct AdminUser {
-    id: i32,
-    primary_email: Option<i32>,
-    created_at: DateTime<Utc>,
-}
-
-impl AdminUser {
-    pub fn grant_role<U: UserLike>(
-        &self,
-        user: &U,
-        role: &str,
-        conn: &PgConnection,
-    ) -> Result<(), diesel::result::Error> {
-        grant_role(user, role, conn)
-    }
-
-    pub fn revoke_role<U: UserLike>(
-        &self,
-        user: &U,
-        role: &str,
-        conn: &PgConnection,
-    ) -> Result<(), diesel::result::Error> {
-        revoke_role(user, role, conn)
-    }
-}
-
-impl UserLike for AdminUser {
-    fn id(&self) -> i32 {
-        self.id
-    }
-
-    fn primary_email(&self) -> Option<i32> {
-        self.primary_email
-    }
-
-    fn created_at(&self) -> DateTime<Utc> {
-        self.created_at
-    }
-}
-
-impl AuthenticatedUserLike for AdminUser {}
-
 #[derive(Debug, Fail)]
 pub enum UserVerifyError {
     #[fail(display = "Error in diesel: {}", _0)]
@@ -248,23 +252,6 @@ impl AuthenticatedUser {
                 self.primary_email = Some(email.id());
                 ()
             })
-    }
-
-    pub fn upgrade_if_admin(
-        self,
-        conn: &PgConnection,
-    ) -> Result<Result<AdminUser, AuthenticatedUser>, diesel::result::Error> {
-        self.is_admin(conn).map(|is_admin| {
-            if is_admin {
-                Ok(AdminUser {
-                    id: self.id,
-                    primary_email: self.primary_email,
-                    created_at: self.created_at,
-                })
-            } else {
-                Err(self)
-            }
-        })
     }
 
     fn verify(&self, email: &VerifiedEmail, conn: &PgConnection) -> Result<(), UserVerifyError> {
