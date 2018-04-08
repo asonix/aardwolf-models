@@ -11,7 +11,7 @@ extern crate serde_json;
 use std::env;
 
 use aardwolf_models::user::email::{Email, EmailVerificationToken, NewEmail, UnverifiedEmail};
-use aardwolf_models::user::{NewUser, UnauthenticatedUser};
+use aardwolf_models::user::{NewUser, UnauthenticatedUser, UserLike};
 use aardwolf_models::user::local_auth::{LocalAuth, NewLocalAuth};
 use aardwolf_models::user::local_auth::PlaintextPassword;
 use diesel::prelude::*;
