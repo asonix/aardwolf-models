@@ -11,15 +11,16 @@ use file::image::Image;
 use schema::base_posts;
 use self::post::{NewPost, Post};
 use self::post::media_post::{MediaPost, NewMediaPost};
-use sql_types::PostVisibility;
+use self::post::comment::{Comment, NewComment};
+use sql_types::{Mime, PostVisibility};
 
 #[derive(Debug, Queryable)]
 pub struct BasePost {
     id: i32,
-    name: Option<String>,       // max_length: 140
-    media_type: Option<String>, // max_length: 80
-    posted_by: Option<i32>,     // foreign key to BaseActor
-    icon: Option<i32>,          // foreign key to Image
+    name: Option<String>,   // max_length: 140
+    media_type: Mime,       // max_length: 80
+    posted_by: Option<i32>, // foreign key to BaseActor
+    icon: Option<i32>,      // foreign key to Image
     visibility: PostVisibility,
     original_json: Value, // original json
 }
@@ -33,8 +34,8 @@ impl BasePost {
         self.name.as_ref().map(|s| s.as_ref())
     }
 
-    pub fn media_type(&self) -> Option<&str> {
-        self.media_type.as_ref().map(|s| s.as_ref())
+    pub fn media_type(&self) -> &Mime {
+        &self.media_type
     }
 
     pub fn posted_by(&self) -> Option<i32> {
@@ -56,7 +57,7 @@ impl BasePost {
 
 pub fn new_media_post(
     name: Option<String>,
-    media_type: Option<String>,
+    media_type: Mime,
     posted_by: Option<&BaseActor>,
     icon: Option<&Image>,
     visibility: PostVisibility,
@@ -89,9 +90,45 @@ pub fn new_media_post(
     })
 }
 
+pub fn new_comment(
+    name: Option<String>,
+    media_type: Mime,
+    posted_by: Option<&BaseActor>,
+    icon: Option<&Image>,
+    visibility: PostVisibility,
+    original_json: Value,
+    content: String,
+    source: Option<String>,
+    conversation: &Post,
+    parent: &Post,
+    conn: &PgConnection,
+) -> Result<(BasePost, Post, Comment), diesel::result::Error> {
+    use schema::comments;
+    use diesel::prelude::*;
+
+    conn.transaction(|| {
+        new_post(
+            name,
+            media_type,
+            posted_by,
+            icon,
+            visibility,
+            original_json,
+            content,
+            source,
+            conn,
+        ).and_then(|(base_post, post)| {
+            diesel::insert_into(comments::table)
+                .values(NewComment::new(conversation, parent, &post))
+                .get_result(conn)
+                .map(|comment: Comment| (base_post, post, comment))
+        })
+    })
+}
+
 pub fn new_post(
     name: Option<String>,
-    media_type: Option<String>,
+    media_type: Mime,
     posted_by: Option<&BaseActor>,
     icon: Option<&Image>,
     visibility: PostVisibility,
@@ -127,7 +164,7 @@ pub fn new_post(
 #[table_name = "base_posts"]
 pub struct NewBasePost {
     name: Option<String>,
-    media_type: Option<String>,
+    media_type: Mime,
     posted_by: Option<i32>,
     icon: Option<i32>,
     visibility: PostVisibility,
@@ -137,7 +174,7 @@ pub struct NewBasePost {
 impl NewBasePost {
     pub fn new(
         name: Option<String>,
-        media_type: Option<String>,
+        media_type: Mime,
         posted_by: Option<&BaseActor>,
         icon: Option<&Image>,
         visibility: PostVisibility,

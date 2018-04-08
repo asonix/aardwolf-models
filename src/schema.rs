@@ -14,7 +14,7 @@ table! {
     base_posts (id) {
         id -> Int4,
         name -> Nullable<Varchar>,
-        media_type -> Nullable<Varchar>,
+        media_type -> Varchar,
         posted_by -> Nullable<Int4>,
         icon -> Nullable<Int4>,
         visibility -> Varchar,

@@ -7,6 +7,7 @@ extern crate diesel;
 extern crate failure;
 #[macro_use]
 extern crate log;
+extern crate mime;
 extern crate rand;
 extern crate serde;
 #[macro_use]
