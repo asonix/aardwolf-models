@@ -4,8 +4,7 @@ use schema::posts;
 pub mod comment;
 pub mod media_post;
 
-#[derive(Debug, Identifiable, Queryable)]
-#[table_name = "posts"]
+#[derive(Debug, Queryable)]
 pub struct Post {
     id: i32,
     content: String,
