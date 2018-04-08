@@ -18,26 +18,6 @@ pub trait UserLike {
     fn primary_email(&self) -> Option<i32>;
     fn created_at(&self) -> DateTime<Utc>;
 
-    fn can_post(&self, conn: &PgConnection) -> Result<bool, diesel::result::Error> {
-        self.has_permission("make-post", conn)
-    }
-
-    fn can_follow(&self, conn: &PgConnection) -> Result<bool, diesel::result::Error> {
-        self.has_permission("follow-user", conn)
-    }
-
-    fn can_configure_instance(&self, conn: &PgConnection) -> Result<bool, diesel::result::Error> {
-        self.has_permission("configure-instance", conn)
-    }
-
-    fn can_ban_user(&self, conn: &PgConnection) -> Result<bool, diesel::result::Error> {
-        self.has_permission("ban-user", conn)
-    }
-
-    fn can_block_instance(&self, conn: &PgConnection) -> Result<bool, diesel::result::Error> {
-        self.has_permission("block-instance", conn)
-    }
-
     fn is_verified(&self, conn: &PgConnection) -> Result<bool, diesel::result::Error> {
         self.has_role("verified", conn)
     }
@@ -62,12 +42,54 @@ pub trait UserLike {
             .get_result(conn)
             .map(|count: i64| count > 0)
     }
+}
 
-    fn has_permission(
-        &self,
-        name: &str,
-        conn: &PgConnection,
-    ) -> Result<bool, diesel::result::Error> {
+#[derive(Debug, Fail)]
+pub enum PermissionError {
+    #[fail(display = "Failed to check user's permission")]
+    Diesel(diesel::result::Error),
+    #[fail(display = "User doesn't have this permission")]
+    Permission,
+}
+
+impl From<diesel::result::Error> for PermissionError {
+    fn from(e: diesel::result::Error) -> Self {
+        PermissionError::Diesel(e)
+    }
+}
+
+pub type PermissionResult<T> = Result<T, PermissionError>;
+
+/// Define things a logged-in user is allowed to do.
+///
+/// The end-goal for this trait is to produce types like `PostCreator`, `UserFollower`, and
+/// `InstanceConfigurator`. These types would *only* be producable through this trait, and would be
+/// the only ways to perform the actions associated with the permission they came from.
+///
+/// This way, permission checking would be enforced by the compiler, since "making a post" or
+/// "configuring the instance" would not be possible without calling these methods.
+pub trait AuthenticatedUserLike: UserLike {
+    fn can_post(&self, conn: &PgConnection) -> PermissionResult<()> {
+        self.has_permission("make-post", conn)
+    }
+
+    fn can_follow(&self, conn: &PgConnection) -> PermissionResult<()> {
+        self.has_permission("follow-user", conn)
+    }
+
+    fn can_configure_instance(&self, conn: &PgConnection) -> PermissionResult<()> {
+        self.has_permission("configure-instance", conn)
+    }
+
+    fn can_ban_user(&self, conn: &PgConnection) -> PermissionResult<()> {
+        self.has_permission("ban-user", conn)
+    }
+
+    fn can_block_instance(&self, conn: &PgConnection) -> PermissionResult<()> {
+        self.has_permission("block-instance", conn)
+    }
+
+    fn has_permission(&self, name: &str, conn: &PgConnection) -> PermissionResult<()> {
         use schema::{permissions, role_permissions, roles, user_roles};
         use diesel::prelude::*;
 
@@ -82,7 +104,14 @@ pub trait UserLike {
             .filter(permissions::dsl::name.eq(name))
             .count()
             .get_result(conn)
-            .map(|count: i64| count > 0)
+            .map_err(From::from)
+            .and_then(|count: i64| {
+                if count > 0 {
+                    Ok(())
+                } else {
+                    Err(PermissionError::Permission)
+                }
+            })
     }
 }
 
@@ -145,6 +174,8 @@ impl UserLike for AdminUser {
     }
 }
 
+impl AuthenticatedUserLike for AdminUser {}
+
 #[derive(Debug, Fail)]
 pub enum UserVerifyError {
     #[fail(display = "Error in diesel: {}", _0)]
@@ -165,20 +196,6 @@ pub struct AuthenticatedUser {
     id: i32,
     primary_email: Option<i32>,
     created_at: DateTime<Utc>,
-}
-
-impl UserLike for AuthenticatedUser {
-    fn id(&self) -> i32 {
-        self.id
-    }
-
-    fn primary_email(&self) -> Option<i32> {
-        self.primary_email
-    }
-
-    fn created_at(&self) -> DateTime<Utc> {
-        self.created_at
-    }
 }
 
 impl AuthenticatedUser {
@@ -223,6 +240,22 @@ impl AuthenticatedUser {
         grant_role(self, "verified", conn).map_err(From::from)
     }
 }
+
+impl UserLike for AuthenticatedUser {
+    fn id(&self) -> i32 {
+        self.id
+    }
+
+    fn primary_email(&self) -> Option<i32> {
+        self.primary_email
+    }
+
+    fn created_at(&self) -> DateTime<Utc> {
+        self.created_at
+    }
+}
+
+impl AuthenticatedUserLike for AuthenticatedUser {}
 
 pub struct MemVerified {
     email: VerifyEmail,
