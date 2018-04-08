@@ -77,6 +77,14 @@ table! {
 }
 
 table! {
+    follow_requests (id) {
+        id -> Int4,
+        follower -> Int4,
+        requested_follow -> Int4,
+    }
+}
+
+table! {
     images (id) {
         id -> Int4,
         width -> Int4,
@@ -220,6 +228,7 @@ allow_tables_to_appear_in_same_query!(
     events,
     files,
     followers,
+    follow_requests,
     images,
     links,
     local_auth,

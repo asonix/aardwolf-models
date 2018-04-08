@@ -4,6 +4,7 @@ use serde_json::Value;
 
 use sql_types::Url;
 
+pub mod follow_request;
 pub mod follower;
 pub mod persona;
 
