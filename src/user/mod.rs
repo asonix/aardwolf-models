@@ -1,13 +1,15 @@
+use chrono::DateTime;
+use chrono::offset::Utc;
 use diesel;
 use diesel::connection::Connection;
 use diesel::pg::PgConnection;
-use chrono::DateTime;
-use chrono::offset::Utc;
 
 pub mod email;
 pub mod local_auth;
+mod permissions;
 pub mod role;
 
+use base_actor::BaseActor;
 use schema::users;
 use self::email::{EmailVerificationToken, UnverifiedEmail, VerifiedEmail, VerifyEmail};
 use self::local_auth::LocalAuth;
@@ -60,42 +62,6 @@ impl From<diesel::result::Error> for PermissionError {
 
 pub type PermissionResult<T> = Result<T, PermissionError>;
 
-mod permissions {
-    pub struct RoleGranter(());
-
-    impl RoleGranter {
-        pub(crate) fn new() -> RoleGranter {
-            RoleGranter(())
-        }
-
-        pub fn grant_role<U: super::UserLike>(
-            &self,
-            user: &U,
-            role: &str,
-            conn: &super::PgConnection,
-        ) -> Result<(), super::diesel::result::Error> {
-            super::grant_role(user, role, conn)
-        }
-    }
-
-    pub struct RoleRevoker(());
-
-    impl RoleRevoker {
-        pub(crate) fn new() -> RoleRevoker {
-            RoleRevoker(())
-        }
-
-        pub fn revoke_role<U: super::UserLike>(
-            &self,
-            user: &U,
-            role: &str,
-            conn: &super::PgConnection,
-        ) -> Result<(), super::diesel::result::Error> {
-            super::revoke_role(user, role, conn)
-        }
-    }
-}
-
 /// Define things a logged-in user is allowed to do.
 ///
 /// The end-goal for this trait is to produce types like `PostCreator`, `UserFollower`, and
@@ -105,8 +71,48 @@ mod permissions {
 /// This way, permission checking would be enforced by the compiler, since "making a post" or
 /// "configuring the instance" would not be possible without calling these methods.
 pub trait AuthenticatedUserLike: UserLike {
-    fn can_post(&self, conn: &PgConnection) -> PermissionResult<()> {
-        self.has_permission("make-post", conn)
+    fn can_post<'a>(
+        &self,
+        base_actor: &'a BaseActor,
+        conn: &PgConnection,
+    ) -> PermissionResult<permissions::PostMaker<'a>> {
+        if self.is_actor(base_actor) {
+            self.has_permission("make-post", conn)
+                .map(|_| permissions::PostMaker::new(base_actor))
+        } else {
+            Err(PermissionError::Permission)
+        }
+    }
+
+    fn can_post_media<'a>(
+        &self,
+        base_actor: &'a BaseActor,
+        conn: &PgConnection,
+    ) -> PermissionResult<permissions::MediaPostMaker<'a>> {
+        if self.is_actor(base_actor) {
+            self.has_permission("make-media-post", conn)
+                .map(|_| permissions::MediaPostMaker::new(base_actor))
+        } else {
+            Err(PermissionError::Permission)
+        }
+    }
+
+    /// TODO: Maybe do more verification here. Is this actor allowed to comment on this post?
+    ///
+    /// check the target post's visibility,
+    /// check whether user follows target post's author,
+    /// check whether parent post is in the same thread as conversation post
+    fn can_post_comment<'a>(
+        &self,
+        base_actor: &'a BaseActor,
+        conn: &PgConnection,
+    ) -> PermissionResult<permissions::CommentMaker<'a>> {
+        if self.is_actor(base_actor) {
+            self.has_permission("make-comment", conn)
+                .map(|_| permissions::CommentMaker::new(base_actor))
+        } else {
+            Err(PermissionError::Permission)
+        }
     }
 
     fn can_follow(&self, conn: &PgConnection) -> PermissionResult<()> {
@@ -139,6 +145,13 @@ pub trait AuthenticatedUserLike: UserLike {
             .map(|_| permissions::RoleRevoker::new())
     }
 
+    fn is_actor(&self, base_actor: &BaseActor) -> bool {
+        base_actor
+            .local_user()
+            .map(|id| id == self.id())
+            .unwrap_or(false)
+    }
+
     fn has_permission(&self, name: &str, conn: &PgConnection) -> PermissionResult<()> {
         use schema::{permissions, role_permissions, roles, user_roles};
         use diesel::prelude::*;
@@ -163,60 +176,6 @@ pub trait AuthenticatedUserLike: UserLike {
                 }
             })
     }
-}
-
-fn grant_role<U: UserLike>(
-    user: &U,
-    role: &str,
-    conn: &PgConnection,
-) -> Result<(), diesel::result::Error> {
-    use schema::{roles, user_roles};
-    use diesel::prelude::*;
-
-    if user.has_role(role, conn)? {
-        return Ok(());
-    }
-
-    roles::table
-        .filter(roles::dsl::name.eq(role))
-        .select(roles::dsl::id)
-        .get_result(conn)
-        .and_then(|role_id: i32| {
-            diesel::insert_into(user_roles::table)
-                .values((
-                    user_roles::dsl::user_id.eq(user.id()),
-                    user_roles::dsl::role_id.eq(role_id),
-                    user_roles::dsl::created_at.eq(Utc::now()),
-                ))
-                .execute(conn)
-                .map(|_| ())
-        })
-}
-
-fn revoke_role<U: UserLike>(
-    user: &U,
-    role: &str,
-    conn: &PgConnection,
-) -> Result<(), diesel::result::Error> {
-    use schema::{roles, user_roles};
-    use diesel::prelude::*;
-
-    if !user.has_role(role, conn)? {
-        return Ok(());
-    }
-
-    roles::table
-        .filter(roles::dsl::name.eq(role))
-        .select(roles::dsl::id)
-        .get_result(conn)
-        .and_then(|role_id: i32| {
-            let user_role = user_roles::table
-                .filter(user_roles::dsl::user_id.eq(user.id()))
-                .filter(user_roles::dsl::role_id.eq(role_id));
-
-            diesel::delete(user_role).execute(conn)
-        })
-        .map(|_| ())
 }
 
 #[derive(Debug, Fail)]
@@ -291,7 +250,9 @@ impl AuthenticatedUser {
             return Err(UserVerifyError::IdMismatch);
         }
 
-        grant_role(self, "verified", conn).map_err(From::from)
+        permissions::RoleGranter::new()
+            .grant_role(self, "verified", conn)
+            .map_err(From::from)
     }
 }
 

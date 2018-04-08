@@ -7,6 +7,8 @@ CREATE TABLE permissions (
 
 INSERT INTO permissions (name, created_at) VALUES ('follow-user', 'now');
 INSERT INTO permissions (name, created_at) VALUES ('make-post', 'now');
+INSERT INTO permissions (name, created_at) VALUES ('make-media-post', 'now');
+INSERT INTO permissions (name, created_at) VALUES ('make-comment', 'now');
 INSERT INTO permissions (name, created_at) VALUES ('configure-instance', 'now');
 INSERT INTO permissions (name, created_at) VALUES ('ban-user', 'now');
 INSERT INTO permissions (name, created_at) VALUES ('block-instance', 'now');

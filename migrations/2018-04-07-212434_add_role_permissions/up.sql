@@ -18,6 +18,16 @@ INSERT INTO role_permissions (role_id, permission_id, created_at) VALUES (
 );
 INSERT INTO role_permissions (role_id, permission_id, created_at) VALUES (
     (SELECT id FROM roles WHERE name = 'verified'),
+    (SELECT id FROM permissions WHERE name = 'make-media-post'),
+    'now'
+);
+INSERT INTO role_permissions (role_id, permission_id, created_at) VALUES (
+    (SELECT id FROM roles WHERE name = 'verified'),
+    (SELECT id FROM permissions WHERE name = 'make-comment'),
+    'now'
+);
+INSERT INTO role_permissions (role_id, permission_id, created_at) VALUES (
+    (SELECT id FROM roles WHERE name = 'verified'),
     (SELECT id FROM permissions WHERE name = 'make-persona'),
     'now'
 );
