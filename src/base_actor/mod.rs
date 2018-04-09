@@ -9,6 +9,7 @@ pub mod follower;
 pub mod persona;
 
 use schema::base_actors;
+use self::follower::Follower;
 use user::UserLike;
 
 #[derive(Debug, AsChangeset)]
@@ -80,6 +81,33 @@ impl BaseActor {
             follow_policy: self.follow_policy,
             original_json: self.original_json,
         }
+    }
+
+    pub fn is_following(
+        &self,
+        follows: &BaseActor,
+        conn: &PgConnection,
+    ) -> Result<bool, diesel::result::Error> {
+        self.is_following_id(follows.id, conn)
+    }
+
+    pub fn is_following_id(
+        &self,
+        follows: i32,
+        conn: &PgConnection,
+    ) -> Result<bool, diesel::result::Error> {
+        use schema::followers;
+        use diesel::prelude::*;
+
+        followers::table
+            .filter(followers::dsl::follower.eq(self.id))
+            .filter(followers::dsl::follows.eq(follows))
+            .get_result(conn)
+            .map(|_: Follower| true)
+            .or_else(|e| match e {
+                diesel::result::Error::NotFound => Ok(false),
+                e => Err(e),
+            })
     }
 
     pub fn display_name(&self) -> &str {

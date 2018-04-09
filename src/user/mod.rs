@@ -76,12 +76,10 @@ pub trait PermissionedUser: UserLike {
         base_actor: &'a BaseActor,
         conn: &PgConnection,
     ) -> PermissionResult<permissions::PostMaker<'a>> {
-        if self.is_actor(base_actor) {
+        self.with_actor(base_actor).and_then(|actor| {
             self.has_permission("make-post", conn)
-                .map(|_| permissions::PostMaker::new(base_actor))
-        } else {
-            Err(PermissionError::Permission)
-        }
+                .map(|_| permissions::PostMaker::new(actor))
+        })
     }
 
     fn can_post_media<'a>(
@@ -89,12 +87,10 @@ pub trait PermissionedUser: UserLike {
         base_actor: &'a BaseActor,
         conn: &PgConnection,
     ) -> PermissionResult<permissions::MediaPostMaker<'a>> {
-        if self.is_actor(base_actor) {
+        self.with_actor(base_actor).and_then(|actor| {
             self.has_permission("make-media-post", conn)
-                .map(|_| permissions::MediaPostMaker::new(base_actor))
-        } else {
-            Err(PermissionError::Permission)
-        }
+                .map(|_| permissions::MediaPostMaker::new(actor))
+        })
     }
 
     /// TODO: Maybe do more verification here. Is this actor allowed to comment on this post?
@@ -107,12 +103,10 @@ pub trait PermissionedUser: UserLike {
         base_actor: &'a BaseActor,
         conn: &PgConnection,
     ) -> PermissionResult<permissions::CommentMaker<'a>> {
-        if self.is_actor(base_actor) {
+        self.with_actor(base_actor).and_then(|actor| {
             self.has_permission("make-comment", conn)
-                .map(|_| permissions::CommentMaker::new(base_actor))
-        } else {
-            Err(PermissionError::Permission)
-        }
+                .map(|_| permissions::CommentMaker::new(actor))
+        })
     }
 
     fn can_follow<'a>(
@@ -120,12 +114,10 @@ pub trait PermissionedUser: UserLike {
         base_actor: &'a BaseActor,
         conn: &PgConnection,
     ) -> PermissionResult<permissions::ActorFollower<'a>> {
-        if self.is_actor(base_actor) {
+        self.with_actor(base_actor).and_then(|actor| {
             self.has_permission("follow-user", conn)
-                .map(|_| permissions::ActorFollower::new(base_actor))
-        } else {
-            Err(PermissionError::Permission)
-        }
+                .map(|_| permissions::ActorFollower::new(actor))
+        })
     }
 
     fn can_make_persona(&self, conn: &PgConnection) -> PermissionResult<()> {
@@ -137,12 +129,10 @@ pub trait PermissionedUser: UserLike {
         base_actor: &'a BaseActor,
         conn: &PgConnection,
     ) -> PermissionResult<permissions::FollowRequestManager<'a>> {
-        if self.is_actor(base_actor) {
+        self.with_actor(base_actor).and_then(|actor| {
             self.has_permission("manage-follow-requests", conn)
-                .map(|_| permissions::FollowRequestManager::new(base_actor))
-        } else {
-            Err(PermissionError::Permission)
-        }
+                .map(|_| permissions::FollowRequestManager::new(actor))
+        })
     }
 
     fn can_configure_instance(&self, conn: &PgConnection) -> PermissionResult<()> {
@@ -167,11 +157,17 @@ pub trait PermissionedUser: UserLike {
             .map(|_| permissions::RoleRevoker::new())
     }
 
-    fn is_actor(&self, base_actor: &BaseActor) -> bool {
+    fn with_actor<'a>(&self, base_actor: &'a BaseActor) -> PermissionResult<&'a BaseActor> {
         base_actor
             .local_user()
-            .map(|id| id == self.id())
-            .unwrap_or(false)
+            .and_then(|id| {
+                if id == self.id() {
+                    Some(base_actor)
+                } else {
+                    None
+                }
+            })
+            .ok_or(PermissionError::Permission)
     }
 
     fn has_permission(&self, name: &str, conn: &PgConnection) -> PermissionResult<()> {

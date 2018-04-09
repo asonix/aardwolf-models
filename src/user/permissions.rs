@@ -180,6 +180,9 @@ impl<'a> CommentMaker<'a> {
         CommentMaker(base_actor)
     }
 
+    /// TODO: Handle ListOnly visibility
+    ///
+    /// This will require possibly another table in the database
     pub fn make_comment(
         &self,
         name: Option<String>,
@@ -192,9 +195,41 @@ impl<'a> CommentMaker<'a> {
         conversation: &Post,
         parent: &Post,
         conn: &PgConnection,
-    ) -> Result<(BasePost, Post, Comment), diesel::result::Error> {
-        use schema::comments;
+    ) -> Result<(BasePost, Post, Comment), CommentError> {
+        use schema::{base_posts, comments};
         use diesel::prelude::*;
+
+        let conversation_base: BasePost = base_posts::table
+            .filter(base_posts::dsl::id.eq(conversation.base_post()))
+            .get_result(conn)?;
+
+        if !(conversation_base.visibility() == PostVisibility::Public)
+            && !conversation_base
+                .posted_by()
+                .map(|author_id| self.0.is_following_id(author_id, conn))
+                .unwrap_or(Ok(true))?
+        // assume if there's no author that it's okay to reply
+        {
+            // Bail if conversation post isn't public and user isn't following author
+            return Err(CommentError::Permission);
+        }
+
+        if parent.id() != conversation.id() {
+            let parent_base: BasePost = base_posts::table
+                .filter(base_posts::dsl::id.eq(parent.base_post()))
+                .get_result(conn)?;
+
+            if !(parent_base.visibility() == PostVisibility::Public)
+                && !parent_base
+                    .posted_by()
+                    .map(|author_id| self.0.is_following_id(author_id, conn))
+                    .unwrap_or(Ok(true))?
+            // assume if there's no author that it's okay to reply
+            {
+                // Bail if parent post isn't pubilc and user isn't following author
+                return Err(CommentError::Permission);
+            }
+        }
 
         conn.transaction(|| {
             PostMaker::new(self.0)
@@ -214,7 +249,21 @@ impl<'a> CommentMaker<'a> {
                         .get_result(conn)
                         .map(|comment: Comment| (base_post, post, comment))
                 })
-        })
+        }).map_err(From::from)
+    }
+}
+
+#[derive(Debug, Fail)]
+pub enum CommentError {
+    #[fail(display = "Error creating comment")]
+    Diesel(diesel::result::Error),
+    #[fail(display = "Not allowed to comment on provided post")]
+    Permission,
+}
+
+impl From<diesel::result::Error> for CommentError {
+    fn from(e: diesel::result::Error) -> Self {
+        CommentError::Diesel(e)
     }
 }
 
