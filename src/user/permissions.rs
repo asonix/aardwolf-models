@@ -113,7 +113,7 @@ impl<'a> PostMaker<'a> {
                 .values(&NewBasePost::new(
                     name,
                     media_type,
-                    Some(self.0),
+                    self.0,
                     icon,
                     visibility,
                     original_json,
@@ -204,11 +204,7 @@ impl<'a> CommentMaker<'a> {
             .get_result(conn)?;
 
         if !(conversation_base.visibility() == PostVisibility::Public)
-            && !conversation_base
-                .posted_by()
-                .map(|author_id| self.0.is_following_id(author_id, conn))
-                .unwrap_or(Ok(true))?
-        // assume if there's no author that it's okay to reply
+            && !self.0.is_following_id(conversation_base.posted_by(), conn)?
         {
             // Bail if conversation post isn't public and user isn't following author
             return Err(CommentError::Permission);
@@ -220,11 +216,7 @@ impl<'a> CommentMaker<'a> {
                 .get_result(conn)?;
 
             if !(parent_base.visibility() == PostVisibility::Public)
-                && !parent_base
-                    .posted_by()
-                    .map(|author_id| self.0.is_following_id(author_id, conn))
-                    .unwrap_or(Ok(true))?
-            // assume if there's no author that it's okay to reply
+                && !self.0.is_following_id(parent_base.posted_by(), conn)?
             {
                 // Bail if parent post isn't pubilc and user isn't following author
                 return Err(CommentError::Permission);

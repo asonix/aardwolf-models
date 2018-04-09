@@ -16,7 +16,7 @@ table! {
         id -> Int4,
         name -> Nullable<Varchar>,
         media_type -> Varchar,
-        posted_by -> Nullable<Int4>,
+        posted_by -> Int4,
         icon -> Nullable<Int4>,
         visibility -> Varchar,
         original_json -> Jsonb,
@@ -70,18 +70,18 @@ table! {
 }
 
 table! {
-    followers (id) {
-        id -> Int4,
-        follower -> Int4,
-        follows -> Int4,
-    }
-}
-
-table! {
     follow_requests (id) {
         id -> Int4,
         follower -> Int4,
         requested_follow -> Int4,
+    }
+}
+
+table! {
+    followers (id) {
+        id -> Int4,
+        follower -> Int4,
+        follows -> Int4,
     }
 }
 
@@ -228,8 +228,8 @@ allow_tables_to_appear_in_same_query!(
     event_notifications,
     events,
     files,
-    followers,
     follow_requests,
+    followers,
     images,
     links,
     local_auth,

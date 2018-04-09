@@ -11,10 +11,10 @@ use sql_types::{Mime, PostVisibility};
 #[derive(Debug, Queryable)]
 pub struct BasePost {
     id: i32,
-    name: Option<String>,   // max_length: 140
-    media_type: Mime,       // max_length: 80
-    posted_by: Option<i32>, // foreign key to BaseActor
-    icon: Option<i32>,      // foreign key to Image
+    name: Option<String>, // max_length: 140
+    media_type: Mime,     // max_length: 80
+    posted_by: i32,       // foreign key to BaseActor
+    icon: Option<i32>,    // foreign key to Image
     visibility: PostVisibility,
     original_json: Value, // original json
 }
@@ -32,7 +32,7 @@ impl BasePost {
         &self.media_type
     }
 
-    pub fn posted_by(&self) -> Option<i32> {
+    pub fn posted_by(&self) -> i32 {
         self.posted_by
     }
 
@@ -54,7 +54,7 @@ impl BasePost {
 pub struct NewBasePost {
     name: Option<String>,
     media_type: Mime,
-    posted_by: Option<i32>,
+    posted_by: i32,
     icon: Option<i32>,
     visibility: PostVisibility,
     original_json: Value,
@@ -64,7 +64,7 @@ impl NewBasePost {
     pub fn new(
         name: Option<String>,
         media_type: Mime,
-        posted_by: Option<&BaseActor>,
+        posted_by: &BaseActor,
         icon: Option<&Image>,
         visibility: PostVisibility,
         original_json: Value,
@@ -72,7 +72,7 @@ impl NewBasePost {
         NewBasePost {
             name,
             media_type,
-            posted_by: posted_by.map(|pb| pb.id()),
+            posted_by: posted_by.id(),
             icon: icon.map(|i| i.id()),
             visibility,
             original_json,
