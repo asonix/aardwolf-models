@@ -12,7 +12,7 @@ use base_post::{BasePost, NewBasePost};
 use base_post::post::{NewPost, Post};
 use base_post::post::media_post::{MediaPost, NewMediaPost};
 use base_post::post::comment::{Comment, NewComment};
-use sql_types::{FollowPolicy, Mime, PostVisibility};
+use sql_types::{FollowPolicy, Mime, Permission, PostVisibility, Role};
 use super::UserLike;
 
 #[derive(Debug, Fail)]
@@ -46,7 +46,7 @@ pub trait PermissionedUser: UserLike {
         conn: &PgConnection,
     ) -> PermissionResult<PostMaker<'a>> {
         self.with_actor(base_actor).and_then(|actor| {
-            self.has_permission("make-post", conn)
+            self.has_permission(Permission::MakePost, conn)
                 .map(|_| PostMaker::new(actor))
         })
     }
@@ -57,7 +57,7 @@ pub trait PermissionedUser: UserLike {
         conn: &PgConnection,
     ) -> PermissionResult<MediaPostMaker<'a>> {
         self.with_actor(base_actor).and_then(|actor| {
-            self.has_permission("make-media-post", conn)
+            self.has_permission(Permission::MakeMediaPost, conn)
                 .map(|_| MediaPostMaker::new(actor))
         })
     }
@@ -73,7 +73,7 @@ pub trait PermissionedUser: UserLike {
         conn: &PgConnection,
     ) -> PermissionResult<CommentMaker<'a>> {
         self.with_actor(base_actor).and_then(|actor| {
-            self.has_permission("make-comment", conn)
+            self.has_permission(Permission::MakeComment, conn)
                 .map(|_| CommentMaker::new(actor))
         })
     }
@@ -84,13 +84,13 @@ pub trait PermissionedUser: UserLike {
         conn: &PgConnection,
     ) -> PermissionResult<ActorFollower<'a>> {
         self.with_actor(base_actor).and_then(|actor| {
-            self.has_permission("follow-user", conn)
+            self.has_permission(Permission::FollowUser, conn)
                 .map(|_| ActorFollower::new(actor))
         })
     }
 
     fn can_make_persona(&self, conn: &PgConnection) -> PermissionResult<()> {
-        self.has_permission("make-persona", conn)
+        self.has_permission(Permission::MakePersona, conn)
     }
 
     fn can_manage_follow_requests<'a>(
@@ -99,30 +99,30 @@ pub trait PermissionedUser: UserLike {
         conn: &PgConnection,
     ) -> PermissionResult<FollowRequestManager<'a>> {
         self.with_actor(base_actor).and_then(|actor| {
-            self.has_permission("manage-follow-requests", conn)
+            self.has_permission(Permission::ManageFollowRequest, conn)
                 .map(|_| FollowRequestManager::new(actor))
         })
     }
 
     fn can_configure_instance(&self, conn: &PgConnection) -> PermissionResult<()> {
-        self.has_permission("configure-instance", conn)
+        self.has_permission(Permission::ConfigureInstance, conn)
     }
 
     fn can_ban_user(&self, conn: &PgConnection) -> PermissionResult<()> {
-        self.has_permission("ban-user", conn)
+        self.has_permission(Permission::BanUser, conn)
     }
 
     fn can_block_instance(&self, conn: &PgConnection) -> PermissionResult<()> {
-        self.has_permission("block-instance", conn)
+        self.has_permission(Permission::BlockInstance, conn)
     }
 
     fn can_grant_role(&self, conn: &PgConnection) -> PermissionResult<RoleGranter> {
-        self.has_permission("grant-role", conn)
+        self.has_permission(Permission::GrantRole, conn)
             .map(|_| RoleGranter::new())
     }
 
     fn can_revoke_role(&self, conn: &PgConnection) -> PermissionResult<RoleRevoker> {
-        self.has_permission("revoke-role", conn)
+        self.has_permission(Permission::RevokeRole, conn)
             .map(|_| RoleRevoker::new())
     }
 
@@ -139,7 +139,7 @@ pub trait PermissionedUser: UserLike {
             .ok_or(PermissionError::Permission)
     }
 
-    fn has_permission(&self, name: &str, conn: &PgConnection) -> PermissionResult<()> {
+    fn has_permission(&self, permission: Permission, conn: &PgConnection) -> PermissionResult<()> {
         use schema::{permissions, role_permissions, roles, user_roles};
         use diesel::prelude::*;
 
@@ -151,7 +151,7 @@ pub trait PermissionedUser: UserLike {
                     .on(role_permissions::dsl::permission_id.eq(permissions::dsl::id)),
             )
             .filter(user_roles::dsl::user_id.eq(self.id()))
-            .filter(permissions::dsl::name.eq(name))
+            .filter(permissions::dsl::name.eq(permission))
             .count()
             .get_result(conn)
             .map_err(From::from)
@@ -175,7 +175,7 @@ impl RoleGranter {
     pub fn grant_role<U: UserLike>(
         &self,
         user: &U,
-        role: &str,
+        role: Role,
         conn: &PgConnection,
     ) -> Result<(), diesel::result::Error> {
         use schema::{roles, user_roles};
@@ -212,7 +212,7 @@ impl RoleRevoker {
     pub fn revoke_role<U: UserLike>(
         &self,
         user: &U,
-        role: &str,
+        role: Role,
         conn: &PgConnection,
     ) -> Result<(), diesel::result::Error> {
         use schema::{roles, user_roles};

@@ -6,12 +6,13 @@ pub mod role_permission;
 pub mod user_role;
 
 use schema::roles;
+use sql_types::Role as RoleSql;
 
 #[derive(Debug, Identifiable, Queryable)]
 #[table_name = "roles"]
 pub struct Role {
     id: i32,
-    name: String,
+    name: RoleSql,
     created_at: DateTime<Utc>,
 }
 
@@ -20,8 +21,8 @@ impl Role {
         self.id
     }
 
-    pub fn name(&self) -> &str {
-        &self.name
+    pub fn name(&self) -> RoleSql {
+        self.name
     }
 
     pub fn created_at(&self) -> DateTime<Utc> {

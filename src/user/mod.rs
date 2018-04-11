@@ -14,6 +14,7 @@ use self::email::{EmailVerificationToken, UnverifiedEmail, VerifiedEmail, Verify
 use self::local_auth::LocalAuth;
 pub use self::local_auth::{PlaintextPassword, VerificationError};
 pub use self::permissions::{PermissionError, PermissionResult, PermissionedUser};
+use sql_types::Role;
 
 pub trait UserLike {
     fn id(&self) -> i32;
@@ -21,18 +22,18 @@ pub trait UserLike {
     fn created_at(&self) -> DateTime<Utc>;
 
     fn is_verified(&self, conn: &PgConnection) -> Result<bool, diesel::result::Error> {
-        self.has_role("verified", conn)
+        self.has_role(Role::Verified, conn)
     }
 
     fn is_moderator(&self, conn: &PgConnection) -> Result<bool, diesel::result::Error> {
-        self.has_role("moderator", conn)
+        self.has_role(Role::Moderator, conn)
     }
 
     fn is_admin(&self, conn: &PgConnection) -> Result<bool, diesel::result::Error> {
-        self.has_role("admin", conn)
+        self.has_role(Role::Admin, conn)
     }
 
-    fn has_role(&self, name: &str, conn: &PgConnection) -> Result<bool, diesel::result::Error> {
+    fn has_role(&self, name: Role, conn: &PgConnection) -> Result<bool, diesel::result::Error> {
         use schema::{roles, user_roles};
         use diesel::prelude::*;
 
@@ -119,7 +120,7 @@ impl AuthenticatedUser {
         }
 
         permissions::RoleGranter::new()
-            .grant_role(self, "verified", conn)
+            .grant_role(self, Role::Verified, conn)
             .map_err(From::from)
     }
 }
