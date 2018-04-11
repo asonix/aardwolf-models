@@ -9,11 +9,11 @@ pub mod local_auth;
 mod permissions;
 pub mod role;
 
-use base_actor::BaseActor;
 use schema::users;
 use self::email::{EmailVerificationToken, UnverifiedEmail, VerifiedEmail, VerifyEmail};
 use self::local_auth::LocalAuth;
 pub use self::local_auth::{PlaintextPassword, VerificationError};
+pub use self::permissions::{PermissionError, PermissionResult, PermissionedUser};
 
 pub trait UserLike {
     fn id(&self) -> i32;
@@ -43,156 +43,6 @@ pub trait UserLike {
             .count()
             .get_result(conn)
             .map(|count: i64| count > 0)
-    }
-}
-
-#[derive(Debug, Fail)]
-pub enum PermissionError {
-    #[fail(display = "Failed to check user's permission")]
-    Diesel(diesel::result::Error),
-    #[fail(display = "User doesn't have this permission")]
-    Permission,
-}
-
-impl From<diesel::result::Error> for PermissionError {
-    fn from(e: diesel::result::Error) -> Self {
-        PermissionError::Diesel(e)
-    }
-}
-
-pub type PermissionResult<T> = Result<T, PermissionError>;
-
-/// Define things a logged-in user is allowed to do.
-///
-/// The end-goal for this trait is to produce types like `PostCreator`, `UserFollower`, and
-/// `InstanceConfigurator`. These types would *only* be producable through this trait, and would be
-/// the only ways to perform the actions associated with the permission they came from.
-///
-/// This way, permission checking would be enforced by the compiler, since "making a post" or
-/// "configuring the instance" would not be possible without calling these methods.
-pub trait PermissionedUser: UserLike {
-    fn can_post<'a>(
-        &self,
-        base_actor: &'a BaseActor,
-        conn: &PgConnection,
-    ) -> PermissionResult<permissions::PostMaker<'a>> {
-        self.with_actor(base_actor).and_then(|actor| {
-            self.has_permission("make-post", conn)
-                .map(|_| permissions::PostMaker::new(actor))
-        })
-    }
-
-    fn can_post_media<'a>(
-        &self,
-        base_actor: &'a BaseActor,
-        conn: &PgConnection,
-    ) -> PermissionResult<permissions::MediaPostMaker<'a>> {
-        self.with_actor(base_actor).and_then(|actor| {
-            self.has_permission("make-media-post", conn)
-                .map(|_| permissions::MediaPostMaker::new(actor))
-        })
-    }
-
-    /// TODO: Maybe do more verification here. Is this actor allowed to comment on this post?
-    ///
-    /// check the target post's visibility,
-    /// check whether user follows target post's author,
-    /// check whether parent post is in the same thread as conversation post
-    fn can_post_comment<'a>(
-        &self,
-        base_actor: &'a BaseActor,
-        conn: &PgConnection,
-    ) -> PermissionResult<permissions::CommentMaker<'a>> {
-        self.with_actor(base_actor).and_then(|actor| {
-            self.has_permission("make-comment", conn)
-                .map(|_| permissions::CommentMaker::new(actor))
-        })
-    }
-
-    fn can_follow<'a>(
-        &self,
-        base_actor: &'a BaseActor,
-        conn: &PgConnection,
-    ) -> PermissionResult<permissions::ActorFollower<'a>> {
-        self.with_actor(base_actor).and_then(|actor| {
-            self.has_permission("follow-user", conn)
-                .map(|_| permissions::ActorFollower::new(actor))
-        })
-    }
-
-    fn can_make_persona(&self, conn: &PgConnection) -> PermissionResult<()> {
-        self.has_permission("make-persona", conn)
-    }
-
-    fn can_manage_follow_requests<'a>(
-        &self,
-        base_actor: &'a BaseActor,
-        conn: &PgConnection,
-    ) -> PermissionResult<permissions::FollowRequestManager<'a>> {
-        self.with_actor(base_actor).and_then(|actor| {
-            self.has_permission("manage-follow-requests", conn)
-                .map(|_| permissions::FollowRequestManager::new(actor))
-        })
-    }
-
-    fn can_configure_instance(&self, conn: &PgConnection) -> PermissionResult<()> {
-        self.has_permission("configure-instance", conn)
-    }
-
-    fn can_ban_user(&self, conn: &PgConnection) -> PermissionResult<()> {
-        self.has_permission("ban-user", conn)
-    }
-
-    fn can_block_instance(&self, conn: &PgConnection) -> PermissionResult<()> {
-        self.has_permission("block-instance", conn)
-    }
-
-    fn can_grant_role(&self, conn: &PgConnection) -> PermissionResult<permissions::RoleGranter> {
-        self.has_permission("grant-role", conn)
-            .map(|_| permissions::RoleGranter::new())
-    }
-
-    fn can_revoke_role(&self, conn: &PgConnection) -> PermissionResult<permissions::RoleRevoker> {
-        self.has_permission("revoke-role", conn)
-            .map(|_| permissions::RoleRevoker::new())
-    }
-
-    fn with_actor<'a>(&self, base_actor: &'a BaseActor) -> PermissionResult<&'a BaseActor> {
-        base_actor
-            .local_user()
-            .and_then(|id| {
-                if id == self.id() {
-                    Some(base_actor)
-                } else {
-                    None
-                }
-            })
-            .ok_or(PermissionError::Permission)
-    }
-
-    fn has_permission(&self, name: &str, conn: &PgConnection) -> PermissionResult<()> {
-        use schema::{permissions, role_permissions, roles, user_roles};
-        use diesel::prelude::*;
-
-        roles::dsl::roles
-            .inner_join(user_roles::dsl::user_roles)
-            .inner_join(role_permissions::dsl::role_permissions)
-            .inner_join(
-                permissions::dsl::permissions
-                    .on(role_permissions::dsl::permission_id.eq(permissions::dsl::id)),
-            )
-            .filter(user_roles::dsl::user_id.eq(self.id()))
-            .filter(permissions::dsl::name.eq(name))
-            .count()
-            .get_result(conn)
-            .map_err(From::from)
-            .and_then(|count: i64| {
-                if count > 0 {
-                    Ok(())
-                } else {
-                    Err(PermissionError::Permission)
-                }
-            })
     }
 }
 
