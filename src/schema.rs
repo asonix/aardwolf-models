@@ -33,6 +33,14 @@ table! {
 }
 
 table! {
+    direct_posts (id) {
+        id -> Int4,
+        base_post_id -> Int4,
+        base_actor_id -> Int4,
+    }
+}
+
+table! {
     emails (id) {
         id -> Int4,
         email -> Varchar,
@@ -82,6 +90,21 @@ table! {
         id -> Int4,
         follower -> Int4,
         follows -> Int4,
+    }
+}
+
+table! {
+    group_actors (id) {
+        id -> Int4,
+        group_id -> Int4,
+        base_actor_id -> Int4,
+    }
+}
+
+table! {
+    groups (id) {
+        id -> Int4,
+        base_actor_id -> Int4,
     }
 }
 
@@ -203,9 +226,14 @@ table! {
 joinable!(base_actors -> users (local_user));
 joinable!(base_posts -> base_actors (posted_by));
 joinable!(base_posts -> images (icon));
+joinable!(direct_posts -> base_actors (base_actor_id));
+joinable!(direct_posts -> base_posts (base_post_id));
 joinable!(event_notifications -> events (event_id));
 joinable!(event_notifications -> timers (timer_id));
 joinable!(events -> personas (owner));
+joinable!(group_actors -> base_actors (base_actor_id));
+joinable!(group_actors -> groups (group_id));
+joinable!(groups -> base_actors (base_actor_id));
 joinable!(images -> files (file_id));
 joinable!(links -> base_posts (base_post));
 joinable!(local_auth -> users (user_id));
@@ -224,12 +252,15 @@ allow_tables_to_appear_in_same_query!(
     base_actors,
     base_posts,
     comments,
+    direct_posts,
     emails,
     event_notifications,
     events,
     files,
     follow_requests,
     followers,
+    group_actors,
+    groups,
     images,
     links,
     local_auth,

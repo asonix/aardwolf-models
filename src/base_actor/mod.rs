@@ -6,6 +6,8 @@ use sql_types::{FollowPolicy, Url};
 
 pub mod follow_request;
 pub mod follower;
+pub mod group;
+pub mod group_actor;
 pub mod persona;
 
 use schema::base_actors;

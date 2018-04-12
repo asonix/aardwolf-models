@@ -1,5 +1,6 @@
 use serde_json::Value;
 
+pub mod direct_post;
 pub mod post;
 pub mod reaction;
 
