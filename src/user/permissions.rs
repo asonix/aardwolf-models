@@ -330,9 +330,6 @@ impl<'a> CommentMaker<'a> {
         CommentMaker(base_actor)
     }
 
-    /// TODO: Handle ListOnly visibility
-    ///
-    /// This will require possibly another table in the database
     pub fn make_comment(
         &self,
         name: Option<String>,
@@ -356,7 +353,12 @@ impl<'a> CommentMaker<'a> {
         if !(conversation_base.visibility() == PostVisibility::Public)
             && !self.0.is_following_id(conversation_base.posted_by(), conn)?
         {
-            // Bail if conversation post isn't public and user isn't following author
+            // Bail if conversation post isn't public and actor isn't following author
+            return Err(CommentError::Permission);
+        } else if conversation_base.visibility() == PostVisibility::ListedPeopleOnly
+            && !conversation_base.is_viewable_by(self.0, conn)?
+        {
+            // Bail if conversation post is a direct post not to the current actor
             return Err(CommentError::Permission);
         }
 
@@ -368,7 +370,12 @@ impl<'a> CommentMaker<'a> {
             if !(parent_base.visibility() == PostVisibility::Public)
                 && !self.0.is_following_id(parent_base.posted_by(), conn)?
             {
-                // Bail if parent post isn't pubilc and user isn't following author
+                // Bail if parent post isn't pubilc and actor isn't following author
+                return Err(CommentError::Permission);
+            } else if parent_base.visibility() == PostVisibility::ListedPeopleOnly
+                && !parent_base.is_viewable_by(self.0, conn)?
+            {
+                // Bail if parent post is a direct post not to the current actor
                 return Err(CommentError::Permission);
             }
         }

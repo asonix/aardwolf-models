@@ -1,3 +1,5 @@
+use diesel;
+use diesel::pg::PgConnection;
 use serde_json::Value;
 
 pub mod direct_post;
@@ -7,6 +9,7 @@ pub mod reaction;
 use base_actor::BaseActor;
 use file::image::Image;
 use schema::base_posts;
+use self::direct_post::DirectPost;
 use sql_types::{Mime, PostVisibility};
 
 #[derive(Debug, Queryable)]
@@ -47,6 +50,25 @@ impl BasePost {
 
     pub fn original_json(&self) -> &Value {
         &self.original_json
+    }
+
+    pub fn is_viewable_by(
+        &self,
+        base_actor: &BaseActor,
+        conn: &PgConnection,
+    ) -> Result<bool, diesel::result::Error> {
+        use schema::direct_posts;
+        use diesel::prelude::*;
+
+        direct_posts::table
+            .filter(direct_posts::dsl::base_post_id.eq(self.id))
+            .filter(direct_posts::dsl::base_actor_id.eq(base_actor.id()))
+            .get_result(conn)
+            .map(|_: DirectPost| true)
+            .or_else(|e| match e {
+                diesel::result::Error::NotFound => Ok(false),
+                e => Err(e),
+            })
     }
 }
 
